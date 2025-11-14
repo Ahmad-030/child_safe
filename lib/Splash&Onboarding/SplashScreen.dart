@@ -120,7 +120,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   const SizedBox(height: 40),
                   // App name
                   const Text(
-                    'ChildSafe',
+                    'Child Safe',
                     style: TextStyle(
                       fontSize: 48,
                       fontWeight: FontWeight.bold,
