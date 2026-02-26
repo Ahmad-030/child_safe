@@ -41,9 +41,12 @@ void main() async {
   );
   const InitializationSettings initSettings =
   InitializationSettings(android: androidInit, iOS: iosInit);
-  await flutterLocalNotificationsPlugin.initialize(initSettings);
 
-  // Request notification permissions
+  await flutterLocalNotificationsPlugin.initialize(
+    initSettings,
+    onDidReceiveNotificationResponse: (NotificationResponse response) {},
+  );
+
   await FirebaseMessaging.instance.requestPermission(
     alert: true,
     badge: true,
@@ -51,8 +54,8 @@ void main() async {
   );
 
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    RemoteNotification? notification = message.notification;
-    AndroidNotification? android = message.notification?.android;
+    final notification = message.notification;
+    final android = message.notification?.android;
     if (notification != null && android != null) {
       flutterLocalNotificationsPlugin.show(
         notification.hashCode,

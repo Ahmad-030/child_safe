@@ -1,8 +1,11 @@
+// lib/EmergencyScreen/EmergencyAlert.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
-
 import 'package:image_picker/image_picker.dart';
+import 'package:geolocator/geolocator.dart';
+import '../firebase_service.dart';
+import '../app_models.dart';
 
 class EmergencyScreen extends StatefulWidget {
   const EmergencyScreen({Key? key}) : super(key: key);
@@ -11,15 +14,19 @@ class EmergencyScreen extends StatefulWidget {
   State<EmergencyScreen> createState() => _EmergencyScreenState();
 }
 
-class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderStateMixin {
+class _EmergencyScreenState extends State<EmergencyScreen>
+    with TickerProviderStateMixin {
   final _nameController = TextEditingController();
   final _ageController = TextEditingController();
   final _lastSeenController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _contactController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   File? _selectedImage;
   late AnimationController _fadeController;
   bool _isSubmitting = false;
+  bool _fetchingLocation = false;
+  double? _lat, _lng;
 
   @override
   void initState() {
@@ -36,8 +43,41 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
     _ageController.dispose();
     _lastSeenController.dispose();
     _descriptionController.dispose();
+    _contactController.dispose();
     _fadeController.dispose();
     super.dispose();
+  }
+
+  Future<void> _getLocation() async {
+    setState(() => _fetchingLocation = true);
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception('Location permission permanently denied');
+      }
+      final pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      setState(() {
+        _lat = pos.latitude;
+        _lng = pos.longitude;
+        _lastSeenController.text =
+        'GPS: ${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}';
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Location error: $e'),
+            backgroundColor: const Color(0xFFEF4444),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _fetchingLocation = false);
+    }
   }
 
   Future<void> _pickImage() async {
@@ -63,14 +103,11 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
                 ),
               ),
               const SizedBox(height: 24),
-              Text(
-                'Select Photo Source',
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF0F172A),
-                ),
-              ),
+              Text('Select Photo Source',
+                  style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF0F172A))),
               const SizedBox(height: 20),
               _buildImageSourceOption(
                 icon: Icons.camera_alt_rounded,
@@ -113,54 +150,36 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
         decoration: BoxDecoration(
           color: const Color(0xFFEF4444).withOpacity(0.05),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0xFFEF4444).withOpacity(0.1),
+          border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.1)),
+        ),
+        child: Row(children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEF4444).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: const Color(0xFFEF4444), size: 28),
           ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEF4444).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                icon,
-                color: const Color(0xFFEF4444),
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
                     style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF0F172A),
-                    ),
-                  ),
-                  Text(
-                    subtitle,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF0F172A))),
+                Text(subtitle,
                     style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      color: const Color(0xFF64748B),
-                    ),
-                  ),
-                ],
-              ),
+                        fontSize: 13, color: const Color(0xFF64748B))),
+              ],
             ),
-            const Icon(
-              Icons.arrow_forward_ios_rounded,
-              color: Color(0xFF94A3B8),
-              size: 18,
-            ),
-          ],
-        ),
+          ),
+          const Icon(Icons.arrow_forward_ios_rounded,
+              color: Color(0xFF94A3B8), size: 18),
+        ]),
       ),
     );
   }
@@ -173,56 +192,94 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
         maxHeight: 1800,
         imageQuality: 85,
       );
-
       if (pickedFile != null) {
-        setState(() {
-          _selectedImage = File(pickedFile.path);
-        });
+        setState(() => _selectedImage = File(pickedFile.path));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Error picking image: ${e.toString()}',
-            style: GoogleFonts.poppins(),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking image: ${e.toString()}',
+                style: GoogleFonts.poppins()),
+            backgroundColor: const Color(0xFFEF4444),
           ),
-          backgroundColor: const Color(0xFFEF4444),
-        ),
-      );
+        );
+      }
     }
   }
 
-  void _submitReport() {
+  // ── REAL SUBMISSION TO FIREBASE ──────────────────────────────────────────────
+  Future<void> _submitReport() async {
     if (_nameController.text.isEmpty ||
         _ageController.text.isEmpty ||
         _lastSeenController.text.isEmpty ||
-        _selectedImage == null) {
+        _contactController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            _selectedImage == null
-                ? 'Please upload a photo of the child'
-                : 'Please fill all required fields',
-            style: GoogleFonts.poppins(),
-          ),
+          content: Text('Please fill all required fields',
+              style: GoogleFonts.poppins()),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
+    if (_selectedImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+          Text('Please upload a photo of the child', style: GoogleFonts.poppins()),
           backgroundColor: const Color(0xFFEF4444),
         ),
       );
       return;
     }
 
-    setState(() {
-      _isSubmitting = true;
-    });
+    setState(() => _isSubmitting = true);
 
-    // Simulate submission
-    Future.delayed(const Duration(seconds: 2), () {
-      setState(() {
-        _isSubmitting = false;
-      });
+    try {
+      // Upload photo
+      String? photoUrl;
+      photoUrl = await FirebaseService.uploadImage(
+        _selectedImage!,
+        'emergency/${DateTime.now().millisecondsSinceEpoch}.jpg',
+      );
 
-      _showSuccessDialog();
-    });
+      // Build alert — emergency reports use a special anonymous reporter uid
+      final uid = FirebaseService.currentUid ?? 'anonymous_emergency';
+      final alert = MissingAlert(
+        id: '',
+        childId: '',
+        childName: _nameController.text.trim(),
+        childAge: int.tryParse(_ageController.text.trim()) ?? 0,
+        childPhotoUrl: photoUrl,
+        reportedBy: uid,
+        reporterName: 'Emergency Report',
+        lastSeenLocation: _lastSeenController.text.trim(),
+        lastSeenLat: _lat,
+        lastSeenLng: _lng,
+        description: _descriptionController.text.trim(),
+        clothingDescription: '',
+        status: 'active',
+        reportedAt: DateTime.now(),
+        emergencyContact: _contactController.text.trim(),
+        isEmergency: true,
+      );
+
+      await FirebaseService.createEmergencyAlert(alert);
+
+      if (mounted) _showSuccessDialog();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Submission failed: $e', style: GoogleFonts.poppins()),
+            backgroundColor: const Color(0xFFEF4444),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   void _showSuccessDialog() {
@@ -231,9 +288,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         contentPadding: const EdgeInsets.all(28),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -244,66 +299,48 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
                 color: const Color(0xFF10B981).withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.check_circle_rounded,
-                color: Color(0xFF10B981),
-                size: 64,
-              ),
+              child: const Icon(Icons.check_circle_rounded,
+                  color: Color(0xFF10B981), size: 64),
             ),
             const SizedBox(height: 24),
-            Text(
-              'Report Submitted',
-              style: GoogleFonts.poppins(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF0F172A),
-              ),
-            ),
+            Text('Report Submitted',
+                style: GoogleFonts.poppins(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF0F172A))),
             const SizedBox(height: 12),
             Text(
-              'Your emergency report has been submitted successfully. Authorities will be notified immediately.',
+              'Your emergency report has been submitted to Firebase and all nearby volunteers have been notified. Authorities can now see this alert.',
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: const Color(0xFF64748B),
-                height: 1.6,
-              ),
+                  fontSize: 14,
+                  color: const Color(0xFF64748B),
+                  height: 1.6),
             ),
             const SizedBox(height: 28),
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
-                ),
+                    colors: [Color(0xFF3B82F6), Color(0xFF2563EB)]),
                 borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF2563EB).withOpacity(0.3),
-                    blurRadius: 15,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
               ),
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () {
-                    Navigator.pop(context); // Close dialog
-                    Navigator.pop(context); // Close emergency screen
+                    Navigator.pop(context);
+                    Navigator.pop(context);
                   },
                   borderRadius: BorderRadius.circular(14),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Center(
-                      child: Text(
-                        'Done',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
+                      child: Text('Done',
+                          style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white)),
                     ),
                   ),
                 ),
@@ -321,7 +358,6 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Background gradient
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -329,68 +365,55 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
                 end: Alignment.bottomRight,
                 colors: [
                   const Color(0xFFEF4444).withOpacity(0.05),
-                  const Color(0xFFDC2626).withOpacity(0.02),
                   Colors.white,
                 ],
               ),
             ),
           ),
-
           SafeArea(
             child: Column(
               children: [
-                // Custom App Bar
+                // App bar
                 Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.arrow_back_rounded),
-                        style: IconButton.styleFrom(
-                          backgroundColor: const Color(0xFFEF4444).withOpacity(0.08),
-                        ),
+                  child: Row(children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      style: IconButton.styleFrom(
+                        backgroundColor:
+                        const Color(0xFFEF4444).withOpacity(0.08),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Emergency Report',
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Emergency Report',
                               style: GoogleFonts.poppins(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                color: const Color(0xFF0F172A),
-                              ),
-                            ),
-                            Text(
-                              'Report a missing child',
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  color: const Color(0xFF0F172A))),
+                          Text('Report a missing child — saves to database',
                               style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                color: const Color(0xFF64748B),
-                              ),
-                            ),
-                          ],
-                        ),
+                                  fontSize: 12,
+                                  color: const Color(0xFF64748B))),
+                        ],
                       ),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEF4444).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.emergency_rounded,
-                          color: Color(0xFFEF4444),
-                          size: 24,
-                        ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEF4444).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    ],
-                  ),
+                      child: const Icon(Icons.emergency_rounded,
+                          color: Color(0xFFEF4444), size: 24),
+                    ),
+                  ]),
                 ),
 
-                // Form Content
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(24.0),
@@ -399,7 +422,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Upload Photo Section
+                          // Photo upload
                           Center(
                             child: GestureDetector(
                               onTap: _pickImage,
@@ -414,170 +437,148 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
                                   border: Border.all(
                                     color: const Color(0xFFEF4444).withOpacity(0.3),
                                     width: 2,
-                                    style: BorderStyle.solid,
                                   ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFFEF4444).withOpacity(0.1),
-                                      blurRadius: 15,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
                                 ),
                                 child: _selectedImage == null
                                     ? Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisAlignment:
+                                  MainAxisAlignment.center,
                                   children: [
-                                    Icon(
-                                      Icons.add_photo_alternate_rounded,
-                                      color: const Color(0xFFEF4444),
-                                      size: 48,
-                                    ),
+                                    const Icon(
+                                        Icons.add_photo_alternate_rounded,
+                                        color: Color(0xFFEF4444),
+                                        size: 48),
                                     const SizedBox(height: 12),
-                                    Text(
-                                      'Upload Photo',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFFEF4444),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Required',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 12,
-                                        color: const Color(0xFF64748B),
-                                      ),
-                                    ),
+                                    Text('Upload Photo',
+                                        style: GoogleFonts.poppins(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color:
+                                            const Color(0xFFEF4444))),
+                                    Text('Required',
+                                        style: GoogleFonts.poppins(
+                                            fontSize: 12,
+                                            color:
+                                            const Color(0xFF64748B))),
                                   ],
                                 )
-                                    : Stack(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(18),
-                                      child: Image.file(
-                                        _selectedImage!,
-                                        width: double.infinity,
-                                        height: double.infinity,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                                    Positioned(
-                                      top: 8,
-                                      right: 8,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(6),
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFFEF4444),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(
-                                          Icons.edit_rounded,
-                                          color: Colors.white,
-                                          size: 16,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                    : ClipRRect(
+                                  borderRadius: BorderRadius.circular(18),
+                                  child: Image.file(_selectedImage!,
+                                      fit: BoxFit.cover),
                                 ),
                               ),
                             ),
                           ),
-
                           const SizedBox(height: 32),
 
-                          // Child's Name
-                          _buildLabel('Child\'s Full Name *'),
+                          _buildLabel("Child's Full Name *"),
                           const SizedBox(height: 8),
                           _buildTextField(
-                            controller: _nameController,
-                            hint: 'Enter full name',
-                            icon: Icons.person_outline_rounded,
-                          ),
+                              controller: _nameController,
+                              hint: 'Enter full name',
+                              icon: Icons.person_outline_rounded),
+                          const SizedBox(height: 16),
 
-                          const SizedBox(height: 20),
-
-                          // Age
                           _buildLabel('Age *'),
                           const SizedBox(height: 8),
                           _buildTextField(
-                            controller: _ageController,
-                            hint: 'Enter age',
-                            icon: Icons.cake_rounded,
-                            keyboardType: TextInputType.number,
-                          ),
+                              controller: _ageController,
+                              hint: 'Enter age',
+                              icon: Icons.cake_rounded,
+                              keyboardType: TextInputType.number),
+                          const SizedBox(height: 16),
 
-                          const SizedBox(height: 20),
-
-                          // Last Seen Location
                           _buildLabel('Last Seen Location *'),
                           const SizedBox(height: 8),
+                          Row(children: [
+                            Expanded(
+                              child: _buildTextField(
+                                  controller: _lastSeenController,
+                                  hint: 'Enter location details',
+                                  icon: Icons.location_on_outlined),
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: _fetchingLocation ? null : _getLocation,
+                              child: Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEF4444).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: _fetchingLocation
+                                    ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Color(0xFFEF4444)))
+                                    : const Icon(Icons.my_location_rounded,
+                                    color: Color(0xFFEF4444)),
+                              ),
+                            ),
+                          ]),
+                          const SizedBox(height: 16),
+
+                          _buildLabel('Reporter Contact Number *'),
+                          const SizedBox(height: 8),
                           _buildTextField(
-                            controller: _lastSeenController,
-                            hint: 'Enter location details',
-                            icon: Icons.location_on_outlined,
-                          ),
+                              controller: _contactController,
+                              hint: 'Your phone number',
+                              icon: Icons.phone_outlined,
+                              keyboardType: TextInputType.phone),
+                          const SizedBox(height: 16),
 
-                          const SizedBox(height: 20),
-
-                          // Description
                           _buildLabel('Additional Details (Optional)'),
                           const SizedBox(height: 8),
                           _buildTextField(
-                            controller: _descriptionController,
-                            hint: 'Clothing, physical features, etc.',
-                            icon: Icons.description_outlined,
-                            maxLines: 4,
-                          ),
+                              controller: _descriptionController,
+                              hint: 'Clothing, physical features, etc.',
+                              icon: Icons.description_outlined,
+                              maxLines: 4),
+                          const SizedBox(height: 24),
 
-                          const SizedBox(height: 32),
-
-                          // Important Notice
+                          // Notice
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
                               color: const Color(0xFFFEF3C7),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: const Color(0xFFF59E0B).withOpacity(0.3),
-                                width: 1,
-                              ),
+                                  color: const Color(0xFFF59E0B).withOpacity(0.3)),
                             ),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(
-                                  Icons.info_rounded,
-                                  color: Color(0xFFF59E0B),
-                                  size: 24,
-                                ),
+                                const Icon(Icons.info_rounded,
+                                    color: Color(0xFFF59E0B), size: 24),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
-                                    'Your report will be immediately shared with local authorities and volunteers in the area.',
+                                    'This report will be IMMEDIATELY saved to our database and all registered volunteers in the area will be notified.',
                                     style: GoogleFonts.poppins(
-                                      fontSize: 13,
-                                      color: const Color(0xFF92400E),
-                                      height: 1.5,
-                                    ),
+                                        fontSize: 13,
+                                        color: const Color(0xFF92400E),
+                                        height: 1.5),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-
                           const SizedBox(height: 32),
 
-                          // Submit Button
+                          // Submit button
                           Container(
                             width: double.infinity,
                             height: 60,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(18),
                               gradient: const LinearGradient(
-                                colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
-                              ),
+                                  colors: [
+                                    Color(0xFFEF4444),
+                                    Color(0xFFDC2626)
+                                  ]),
                               boxShadow: [
                                 BoxShadow(
                                   color: const Color(0xFFEF4444).withOpacity(0.3),
@@ -599,26 +600,17 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
                                         width: 24,
                                         height: 24,
                                         child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2.5,
-                                        ),
+                                            color: Colors.white, strokeWidth: 2.5),
                                       )
                                     else ...[
-                                      const Icon(
-                                        Icons.send_rounded,
-                                        color: Colors.white,
-                                        size: 24,
-                                      ),
+                                      const Icon(Icons.send_rounded,
+                                          color: Colors.white, size: 24),
                                       const SizedBox(width: 12),
-                                      Text(
-                                        'Submit Report',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white,
-                                          letterSpacing: 0.5,
-                                        ),
-                                      ),
+                                      Text('Submit Report to Database',
+                                          style: GoogleFonts.poppins(
+                                              fontSize: 17,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white)),
                                     ],
                                   ],
                                 ),
@@ -628,28 +620,18 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
 
                           const SizedBox(height: 16),
 
-                          // Emergency Helpline
                           Center(
                             child: TextButton.icon(
-                              onPressed: () {
-                                // Call emergency helpline
-                              },
-                              icon: const Icon(
-                                Icons.phone_rounded,
-                                color: Color(0xFF2563EB),
-                                size: 20,
-                              ),
-                              label: Text(
-                                'Call Emergency Helpline: 1122',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF2563EB),
-                                ),
-                              ),
+                              onPressed: () {},
+                              icon: const Icon(Icons.phone_rounded,
+                                  color: Color(0xFF2563EB), size: 20),
+                              label: Text('Call Emergency Helpline: 1122',
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF2563EB))),
                             ),
                           ),
-
                           const SizedBox(height: 40),
                         ],
                       ),
@@ -664,16 +646,11 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
     );
   }
 
-  Widget _buildLabel(String text) {
-    return Text(
-      text,
+  Widget _buildLabel(String text) => Text(text,
       style: GoogleFonts.poppins(
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-        color: const Color(0xFF0F172A),
-      ),
-    );
-  }
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: const Color(0xFF0F172A)));
 
   Widget _buildTextField({
     required TextEditingController controller,
@@ -687,9 +664,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0xFFEF4444).withOpacity(0.15),
-          width: 1.5,
-        ),
+            color: const Color(0xFFEF4444).withOpacity(0.15), width: 1.5),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFFEF4444).withOpacity(0.05),
@@ -702,22 +677,15 @@ class _EmergencyScreenState extends State<EmergencyScreen> with TickerProviderSt
         controller: controller,
         keyboardType: keyboardType,
         maxLines: maxLines,
-        style: GoogleFonts.poppins(
-          fontSize: 15,
-          color: const Color(0xFF0F172A),
-        ),
+        style: GoogleFonts.poppins(fontSize: 15, color: const Color(0xFF0F172A)),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: GoogleFonts.poppins(
-            fontSize: 15,
-            color: const Color(0xFF94A3B8),
-          ),
+          hintStyle:
+          GoogleFonts.poppins(fontSize: 15, color: const Color(0xFF94A3B8)),
           prefixIcon: Icon(icon, color: const Color(0xFFEF4444)),
           border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: maxLines > 1 ? 18 : 18,
-          ),
+          contentPadding:
+          EdgeInsets.symmetric(horizontal: 20, vertical: maxLines > 1 ? 18 : 18),
         ),
       ),
     );

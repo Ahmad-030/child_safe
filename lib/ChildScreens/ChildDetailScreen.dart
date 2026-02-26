@@ -1,4 +1,4 @@
-// lib/ChildProfile/ChildDetailScreen.dart
+// lib/ChildScreens/ChildDetailScreen.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:geolocator/geolocator.dart';
@@ -6,6 +6,7 @@ import '../../shared.dart';
 import '../../firebase_service.dart';
 import '../../app_models.dart';
 import 'AddChildScreen.dart';
+import 'SafeZoneScreen.dart';
 import '../AlertsScreens/CreateAlertScreen.dart';
 
 class ChildDetailScreen extends StatefulWidget {
@@ -29,10 +30,18 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
 
       final pos = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
+
       await FirebaseService.updateChildLocation(
           widget.child.id, pos.latitude, pos.longitude);
       await FirebaseService.addLocationHistory(
           widget.child.id, pos.latitude, pos.longitude);
+
+      // ── CHECK GEOFENCE AFTER EVERY LOCATION UPDATE ──
+      await FirebaseService.checkGeofenceAndNotify(
+        child: widget.child,
+        lat: pos.latitude,
+        lng: pos.longitude,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -52,6 +61,67 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
       }
     } finally {
       if (mounted) setState(() => _trackingActive = false);
+    }
+  }
+
+  Future<void> _triggerSOS() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Trigger SOS?',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w700)),
+        content: Text(
+            'This will send an emergency SOS alert for ${widget.child.name} to all authorities and volunteers.',
+            style: GoogleFonts.poppins()),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Cancel', style: GoogleFonts.poppins())),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
+            child: Text('Send SOS',
+                style: GoogleFonts.poppins(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      LocationPermission perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      final pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+
+      await FirebaseService.triggerChildSOS(
+        childId: widget.child.id,
+        childName: widget.child.name,
+        parentUid: widget.child.parentUid,
+        lat: pos.latitude,
+        lng: pos.longitude,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🆘 SOS alert sent! Authorities have been notified.'),
+            backgroundColor: AppTheme.danger,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('SOS error: $e'),
+              backgroundColor: AppTheme.danger),
+        );
+      }
     }
   }
 
@@ -110,7 +180,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Header
+            // Header gradient
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
@@ -156,8 +226,43 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Action buttons
                   if (child.status == 'safe') ...[
+                    // SOS Button
+                    GestureDetector(
+                      onTap: _triggerSOS,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                              colors: [Color(0xFFEF4444), Color(0xFFDC2626)]),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.danger.withOpacity(0.4),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
+                            )
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.sos_rounded,
+                                color: Colors.white, size: 28),
+                            const SizedBox(width: 10),
+                            Text('TRIGGER SOS ALERT',
+                                style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 16,
+                                    letterSpacing: 0.5)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
                     GradientButton(
                       label: _trackingActive
                           ? 'Updating Location...'
@@ -167,6 +272,49 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
                       onTap: _simulateLocationUpdate,
                     ),
                     const SizedBox(height: 12),
+
+                    // Safe Zone button
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => SafeZoneScreen(child: child),
+                        ),
+                      ),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.success.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                              color: AppTheme.success.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              child.hasSafeZone
+                                  ? Icons.shield_rounded
+                                  : Icons.add_location_alt_rounded,
+                              color: AppTheme.success,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              child.hasSafeZone
+                                  ? 'Manage Safe Zone ✓'
+                                  : 'Set Up Safe Zone',
+                              style: GoogleFonts.poppins(
+                                  color: AppTheme.success,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
                     GestureDetector(
                       onTap: () => Navigator.push(
                         context,
@@ -199,6 +347,41 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
+                  ],
+
+                  // Safe zone status card
+                  if (child.hasSafeZone) ...[
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.success.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(14),
+                        border:
+                        Border.all(color: AppTheme.success.withOpacity(0.2)),
+                      ),
+                      child: Row(children: [
+                        const Icon(Icons.shield_rounded,
+                            color: AppTheme.success),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Safe Zone Active',
+                                  style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w700,
+                                      color: AppTheme.success)),
+                              Text(
+                                'Alert radius: ${child.safeZoneRadius < 1000 ? '${child.safeZoneRadius.toInt()}m' : '${(child.safeZoneRadius / 1000).toStringAsFixed(1)}km'}',
+                                style: GoogleFonts.poppins(
+                                    fontSize: 12, color: AppTheme.textMid),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ]),
+                    ),
+                    const SizedBox(height: 16),
                   ],
 
                   // Info card
@@ -239,10 +422,9 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Location tracking
+                  // Location tracking card
                   StreamBuilder<LocationUpdate?>(
-                    stream:
-                    FirebaseService.childLocationStream(child.id),
+                    stream: FirebaseService.childLocationStream(child.id),
                     builder: (context, snap) {
                       final loc = snap.data;
                       return Container(
@@ -277,8 +459,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Column(
-                                  crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(children: [
                                       const Icon(Icons.gps_fixed_rounded,
@@ -346,8 +527,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> {
     return '${diff.inDays}d ago';
   }
 
-  Widget _infoRow(
-      String label, String value, IconData icon, Color color) {
+  Widget _infoRow(String label, String value, IconData icon, Color color) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(children: [

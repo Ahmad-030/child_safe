@@ -80,6 +80,10 @@ class ChildProfile {
   final List<String> medicalConditions;
   final String status;
   final DateTime? createdAt;
+  // Geofence fields
+  final double? safeZoneLat;
+  final double? safeZoneLng;
+  final double safeZoneRadius; // in meters
 
   ChildProfile({
     required this.id,
@@ -94,6 +98,9 @@ class ChildProfile {
     this.medicalConditions = const [],
     this.status = 'safe',
     this.createdAt,
+    this.safeZoneLat,
+    this.safeZoneLng,
+    this.safeZoneRadius = 500,
   });
 
   factory ChildProfile.fromMap(String id, Map<String, dynamic> m) =>
@@ -110,6 +117,9 @@ class ChildProfile {
         medicalConditions: List<String>.from(m['medicalConditions'] ?? []),
         status: m['status'] ?? 'safe',
         createdAt: (m['createdAt'] as Timestamp?)?.toDate(),
+        safeZoneLat: (m['safeZoneLat'] as num?)?.toDouble(),
+        safeZoneLng: (m['safeZoneLng'] as num?)?.toDouble(),
+        safeZoneRadius: (m['safeZoneRadius'] as num?)?.toDouble() ?? 500,
       );
 
   Map<String, dynamic> toMap() => {
@@ -124,7 +134,12 @@ class ChildProfile {
     'medicalConditions': medicalConditions,
     'status': status,
     'createdAt': FieldValue.serverTimestamp(),
+    'safeZoneLat': safeZoneLat,
+    'safeZoneLng': safeZoneLng,
+    'safeZoneRadius': safeZoneRadius,
   };
+
+  bool get hasSafeZone => safeZoneLat != null && safeZoneLng != null;
 }
 
 class MissingAlert {
@@ -145,6 +160,8 @@ class MissingAlert {
   final DateTime? foundAt;
   final int sightingCount;
   final String? resolvedBy;
+  final String emergencyContact;
+  final bool isEmergency;
 
   MissingAlert({
     required this.id,
@@ -164,6 +181,8 @@ class MissingAlert {
     this.foundAt,
     this.sightingCount = 0,
     this.resolvedBy,
+    this.emergencyContact = '',
+    this.isEmergency = false,
   });
 
   factory MissingAlert.fromMap(String id, Map<String, dynamic> m) =>
@@ -186,6 +205,8 @@ class MissingAlert {
         foundAt: (m['foundAt'] as Timestamp?)?.toDate(),
         sightingCount: (m['sightingCount'] ?? 0).toInt(),
         resolvedBy: m['resolvedBy'],
+        emergencyContact: m['emergencyContact'] ?? '',
+        isEmergency: m['isEmergency'] ?? false,
       );
 
   Map<String, dynamic> toMap() => {
@@ -204,6 +225,8 @@ class MissingAlert {
     'reportedAt': FieldValue.serverTimestamp(),
     'sightingCount': sightingCount,
     'resolvedBy': resolvedBy,
+    'emergencyContact': emergencyContact,
+    'isEmergency': isEmergency,
   };
 
   String get timeAgo {
@@ -272,11 +295,12 @@ class LocationUpdate {
   final double lng;
   final DateTime? timestamp;
 
-  LocationUpdate(
-      {required this.childId,
-        required this.lat,
-        required this.lng,
-        this.timestamp});
+  LocationUpdate({
+    required this.childId,
+    required this.lat,
+    required this.lng,
+    this.timestamp,
+  });
 
   factory LocationUpdate.fromMap(Map<String, dynamic> m) => LocationUpdate(
     childId: m['childId'] ?? '',
@@ -367,5 +391,50 @@ class AppNotification {
     'relatedId': relatedId,
     'read': read,
     'createdAt': FieldValue.serverTimestamp(),
+  };
+}
+
+/// Geofence / Safe Zone event log
+class GeofenceEvent {
+  final String id;
+  final String childId;
+  final String childName;
+  final String parentUid;
+  final String eventType; // 'exit' or 'enter'
+  final double lat;
+  final double lng;
+  final DateTime timestamp;
+
+  GeofenceEvent({
+    required this.id,
+    required this.childId,
+    required this.childName,
+    required this.parentUid,
+    required this.eventType,
+    required this.lat,
+    required this.lng,
+    required this.timestamp,
+  });
+
+  factory GeofenceEvent.fromMap(String id, Map<String, dynamic> m) =>
+      GeofenceEvent(
+        id: id,
+        childId: m['childId'] ?? '',
+        childName: m['childName'] ?? '',
+        parentUid: m['parentUid'] ?? '',
+        eventType: m['eventType'] ?? 'exit',
+        lat: (m['lat'] as num?)?.toDouble() ?? 0,
+        lng: (m['lng'] as num?)?.toDouble() ?? 0,
+        timestamp: (m['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      );
+
+  Map<String, dynamic> toMap() => {
+    'childId': childId,
+    'childName': childName,
+    'parentUid': parentUid,
+    'eventType': eventType,
+    'lat': lat,
+    'lng': lng,
+    'timestamp': FieldValue.serverTimestamp(),
   };
 }

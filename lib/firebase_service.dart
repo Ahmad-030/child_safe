@@ -1,10 +1,10 @@
 // lib/firebase_service.dart
 import 'dart:io';
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'app_models.dart';
 
 class FirebaseService {
@@ -73,10 +73,123 @@ class FirebaseService {
     return ChildProfile.fromMap(id, doc.data()!);
   }
 
+  // ─── SAFE ZONE / GEOFENCE ──────────────────────────────────────────────────
+  static Future<void> setSafeZone(
+      String childId, double lat, double lng, double radiusMeters) {
+    return db.collection('children').doc(childId).update({
+      'safeZoneLat': lat,
+      'safeZoneLng': lng,
+      'safeZoneRadius': radiusMeters,
+    });
+  }
+
+  static Future<void> clearSafeZone(String childId) {
+    return db.collection('children').doc(childId).update({
+      'safeZoneLat': FieldValue.delete(),
+      'safeZoneLng': FieldValue.delete(),
+      'safeZoneRadius': 500,
+    });
+  }
+
+  /// Call this every time child location is updated — checks geofence and
+  /// records an event + notifies parent if child exits safe zone.
+  static Future<void> checkGeofenceAndNotify({
+    required ChildProfile child,
+    required double lat,
+    required double lng,
+  }) async {
+    if (!child.hasSafeZone) return;
+
+    final distanceMeters = _haversineDistance(
+      child.safeZoneLat!,
+      child.safeZoneLng!,
+      lat,
+      lng,
+    );
+
+    final isOutside = distanceMeters > child.safeZoneRadius;
+    if (isOutside) {
+      // Log geofence exit event
+      await db.collection('geofence_events').add(GeofenceEvent(
+        id: '',
+        childId: child.id,
+        childName: child.name,
+        parentUid: child.parentUid,
+        eventType: 'exit',
+        lat: lat,
+        lng: lng,
+        timestamp: DateTime.now(),
+      ).toMap());
+
+      // Create in-app notification for parent
+      await saveNotification(AppNotification(
+        id: '',
+        recipientUid: child.parentUid,
+        title: '⚠️ Safe Zone Alert — ${child.name}',
+        body:
+        '${child.name} has left the designated safe zone! Current location: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
+        type: 'geofence',
+        relatedId: child.id,
+        createdAt: DateTime.now(),
+      ));
+    }
+  }
+
+  static Stream<List<GeofenceEvent>> geofenceEventsStream(String childId) =>
+      db
+          .collection('geofence_events')
+          .where('childId', isEqualTo: childId)
+          .orderBy('timestamp', descending: true)
+          .limit(20)
+          .snapshots()
+          .map((s) =>
+          s.docs.map((d) => GeofenceEvent.fromMap(d.id, d.data())).toList());
+
+  /// Haversine formula — returns distance in meters between two GPS coordinates
+  static double _haversineDistance(
+      double lat1, double lon1, double lat2, double lon2) {
+    const R = 6371000.0; // Earth radius in metres
+    final phi1 = lat1 * pi / 180;
+    final phi2 = lat2 * pi / 180;
+    final dPhi = (lat2 - lat1) * pi / 180;
+    final dLam = (lon2 - lon1) * pi / 180;
+    final a = sin(dPhi / 2) * sin(dPhi / 2) +
+        cos(phi1) * cos(phi2) * sin(dLam / 2) * sin(dLam / 2);
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return R * c;
+  }
+
   // ─── MISSING ALERTS ────────────────────────────────────────────────────────
   static Future<String> createMissingAlert(MissingAlert alert) async {
     final ref = await db.collection('missing_alerts').add(alert.toMap());
-    await updateChildProfile(alert.childId, {'status': 'missing'});
+    if (alert.childId.isNotEmpty) {
+      await updateChildProfile(alert.childId, {'status': 'missing'});
+    }
+    // Notify all users
+    await _notifyAllUsers(
+      title: '🚨 Missing Child Alert — ${alert.childName}',
+      body:
+      'Age ${alert.childAge} last seen at ${alert.lastSeenLocation}. Tap to view details.',
+      type: 'alert',
+      relatedId: ref.id,
+    );
+    return ref.id;
+  }
+
+  /// Emergency alert — no login required, saves directly to Firebase
+  static Future<String> createEmergencyAlert(MissingAlert alert) async {
+    final ref = await db.collection('missing_alerts').add({
+      ...alert.toMap(),
+      'isEmergency': true,
+      'reporterName': 'Emergency Report (No Login)',
+    });
+    await _notifyAllUsers(
+      title: '🆘 EMERGENCY — Missing Child: ${alert.childName}',
+      body:
+      'Emergency report filed. Age ${alert.childAge}, last seen: ${alert.lastSeenLocation}',
+      type: 'alert',
+      relatedId: ref.id,
+    );
     return ref.id;
   }
 
@@ -84,7 +197,7 @@ class FirebaseService {
       {String? resolvedBy}) async {
     final data = <String, dynamic>{
       'status': status,
-      'updatedAt': FieldValue.serverTimestamp()
+      'updatedAt': FieldValue.serverTimestamp(),
     };
     if (resolvedBy != null) data['resolvedBy'] = resolvedBy;
     if (status == 'found') data['foundAt'] = FieldValue.serverTimestamp();
@@ -174,6 +287,39 @@ class FirebaseService {
           .snapshots()
           .map((s) => s.docs.map((d) => d.data()).toList());
 
+  // ─── CHILD SOS ─────────────────────────────────────────────────────────────
+  /// Child triggers SOS — notifies parent immediately
+  static Future<void> triggerChildSOS({
+    required String childId,
+    required String childName,
+    required String parentUid,
+    required double lat,
+    required double lng,
+  }) async {
+    // Save SOS event
+    await db.collection('sos_events').add({
+      'childId': childId,
+      'childName': childName,
+      'parentUid': parentUid,
+      'lat': lat,
+      'lng': lng,
+      'timestamp': FieldValue.serverTimestamp(),
+      'resolved': false,
+    });
+
+    // Notify parent
+    await saveNotification(AppNotification(
+      id: '',
+      recipientUid: parentUid,
+      title: '🆘 SOS from ${childName}!',
+      body:
+      '${childName} has triggered an SOS alert! Location: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}. Please respond immediately!',
+      type: 'sos',
+      relatedId: childId,
+      createdAt: DateTime.now(),
+    ));
+  }
+
   // ─── REWARDS / POINTS ──────────────────────────────────────────────────────
   static Future<void> addPoints(String uid, int points) =>
       db.collection('users').doc(uid).update({
@@ -205,6 +351,30 @@ class FirebaseService {
   // ─── NOTIFICATIONS ─────────────────────────────────────────────────────────
   static Future<void> saveNotification(AppNotification notification) =>
       db.collection('notifications').add(notification.toMap());
+
+  /// Notifies all users — used when a new missing alert is created
+  static Future<void> _notifyAllUsers({
+    required String title,
+    required String body,
+    required String type,
+    required String relatedId,
+  }) async {
+    final users = await db.collection('users').get();
+    final batch = db.batch();
+    for (final doc in users.docs) {
+      final ref = db.collection('notifications').doc();
+      batch.set(ref, {
+        'recipientUid': doc.id,
+        'title': title,
+        'body': body,
+        'type': type,
+        'relatedId': relatedId,
+        'read': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
+  }
 
   static Stream<List<AppNotification>> notificationsStream(String uid) =>
       db
@@ -278,28 +448,5 @@ class FirebaseService {
         await db.collection('users').doc(uid).update({'fcmToken': token});
       }
     } catch (_) {}
-  }
-
-  // ─── SEND LOCAL NOTIFICATION ───────────────────────────────────────────────
-  static Future<void> sendLocalNotification({
-    required String title,
-    required String body,
-    String? payload,
-  }) async {
-    const AndroidNotificationDetails androidDetails =
-    AndroidNotificationDetails(
-      'childsafe_channel',
-      'ChildSafe Alerts',
-      channelDescription: 'Missing child alerts and updates',
-      importance: Importance.max,
-      priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
-    );
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails();
-    const NotificationDetails details =
-    NotificationDetails(android: androidDetails, iOS: iosDetails);
-
-    // import main to access plugin instance
-    // We'll use a static reference
   }
 }
