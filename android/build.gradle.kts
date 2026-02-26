@@ -13,6 +13,8 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        maven { url = uri("https://maven.google.com") }  // add this
+        maven { url = uri("https://jcenter.bintray.com") } // add this
     }
 }
 

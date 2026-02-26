@@ -93,6 +93,7 @@ class _AlertsScreenState extends State<AlertsScreen>
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'alerts_fab',
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const CreateAlertScreen()),
