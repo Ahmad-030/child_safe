@@ -1,3 +1,4 @@
+// lib/Splash&Onboarding/OnboardingScreen.dart
 import 'package:child_safe/Authentication/LoginScreen.dart';
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
@@ -10,7 +11,8 @@ class OnboardingScreen extends StatefulWidget {
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> with TickerProviderStateMixin {
+class _OnboardingScreenState extends State<OnboardingScreen>
+    with TickerProviderStateMixin {
   final PageController _pageController = PageController();
   int _currentPage = 0;
   late AnimationController _fadeController;
@@ -18,28 +20,40 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
 
   final List<OnboardingData> _pages = [
     OnboardingData(
-      imagePath: 'assets/images/onboardinga.png',
       title: 'Instant Missing\nChild Alerts',
-      description: 'Stay informed with real-time notifications to help locate and respond quickly.',
-      color: Color(0xFF2563EB),
-      gradientStart: Color(0xFF3B82F6),
-      gradientEnd: Color(0xFF60A5FA),
+      description:
+      'Stay informed with real-time notifications to help locate and respond quickly.',
+      icon: Icons.notification_important_rounded,
+      color: const Color(0xFF2563EB),
+      gradientStart: const Color(0xFF3B82F6),
+      gradientEnd: const Color(0xFF60A5FA),
     ),
     OnboardingData(
-      imagePath: 'assets/images/onboardingb.png',
       title: 'Community-Powered\nSearch',
-      description: 'Parents, volunteers, and authorities work together to report and track missing children.',
-      color: Color(0xFF0EA5E9),
-      gradientStart: Color(0xFF06B6D4),
-      gradientEnd: Color(0xFF22D3EE),
+      description:
+      'Parents, volunteers, and authorities work together to report and track missing children.',
+      icon: Icons.people_rounded,
+      color: const Color(0xFF0EA5E9),
+      gradientStart: const Color(0xFF06B6D4),
+      gradientEnd: const Color(0xFF22D3EE),
     ),
     OnboardingData(
-      imagePath: 'assets/images/onboardingc.png',
+      title: 'GPS Location\nTracking',
+      description:
+      'Real-time GPS tracking keeps parents informed of their child\'s whereabouts 24/7.',
+      icon: Icons.location_on_rounded,
+      color: const Color(0xFF8B5CF6),
+      gradientStart: const Color(0xFF7C3AED),
+      gradientEnd: const Color(0xFFA78BFA),
+    ),
+    OnboardingData(
       title: 'Secure Case\nManagement',
-      description: 'Verified information ensures safe, trusted communication and faster recoveries.',
-      color: Color(0xFF2563EB),
-      gradientStart: Color(0xFF3B82F6),
-      gradientEnd: Color(0xFF60A5FA),
+      description:
+      'Verified information ensures safe, trusted communication and faster recoveries.',
+      icon: Icons.shield_rounded,
+      color: const Color(0xFF2563EB),
+      gradientStart: const Color(0xFF3B82F6),
+      gradientEnd: const Color(0xFF60A5FA),
     ),
   ];
 
@@ -65,13 +79,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Animated background gradient
           AnimatedContainer(
             duration: const Duration(milliseconds: 600),
             curve: Curves.easeInOut,
@@ -80,24 +91,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  _pages[_currentPage].gradientStart.withOpacity(0.05),
+                  _pages[_currentPage].gradientStart.withOpacity(0.06),
                   _pages[_currentPage].gradientEnd.withOpacity(0.02),
                   Colors.white,
                 ],
               ),
             ),
           ),
-
           SafeArea(
             child: Column(
               children: [
-                // Top bar with skip button
+                // Skip button
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20.0, vertical: 8.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      // Enhanced Skip button
                       if (_currentPage < _pages.length - 1)
                         Material(
                           color: Colors.transparent,
@@ -111,18 +121,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
                             },
                             borderRadius: BorderRadius.circular(14),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 10),
                               decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    _pages[_currentPage].color.withOpacity(0.08),
-                                    _pages[_currentPage].color.withOpacity(0.05),
-                                  ],
-                                ),
+                                color: _pages[_currentPage]
+                                    .color
+                                    .withOpacity(0.08),
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
-                                  color: _pages[_currentPage].color.withOpacity(0.15),
-                                  width: 1.5,
+                                  color: _pages[_currentPage]
+                                      .color
+                                      .withOpacity(0.15),
                                 ),
                               ),
                               child: Row(
@@ -132,17 +141,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
                                     'Skip',
                                     style: GoogleFonts.poppins(
                                       color: _pages[_currentPage].color,
-                                      fontSize: 15,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.w600,
-                                      letterSpacing: 0.3,
                                     ),
                                   ),
-                                  const SizedBox(width: 6),
-                                  Icon(
-                                    Icons.arrow_forward_rounded,
-                                    color: _pages[_currentPage].color,
-                                    size: 18,
-                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(Icons.arrow_forward_rounded,
+                                      color: _pages[_currentPage].color,
+                                      size: 16),
                                 ],
                               ),
                             ),
@@ -152,91 +158,63 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
                   ),
                 ),
 
-                const SizedBox(height: 12),
-
-                // PageView
+                // Page view
                 Expanded(
                   child: PageView.builder(
                     controller: _pageController,
-                    onPageChanged: (index) {
-                      setState(() {
-                        _currentPage = index;
-                      });
+                    onPageChanged: (i) {
+                      setState(() => _currentPage = i);
                       _fadeController.reset();
                       _fadeController.forward();
                     },
                     itemCount: _pages.length,
-                    itemBuilder: (context, index) {
-                      return FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: OnboardingPage(
-                          data: _pages[index],
-                          isActive: _currentPage == index,
-                        ),
-                      );
-                    },
+                    itemBuilder: (_, i) => FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: _OnboardingPage(
+                          data: _pages[i], isActive: _currentPage == i),
+                    ),
                   ),
                 ),
 
-                // Bottom section with button
+                // Bottom controls
                 Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: Column(
                     children: [
-                      // Page indicators
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(_pages.length, (index) {
+                        children:
+                        List.generate(_pages.length, (i) {
                           return AnimatedContainer(
                             duration: const Duration(milliseconds: 300),
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            width: _currentPage == index ? 40 : 10,
-                            height: 10,
+                            margin:
+                            const EdgeInsets.symmetric(horizontal: 4),
+                            width: _currentPage == i ? 36 : 8,
+                            height: 8,
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(5),
-                              color: _currentPage == index
+                              borderRadius: BorderRadius.circular(4),
+                              color: _currentPage == i
                                   ? _pages[_currentPage].color
                                   : Colors.grey.shade300,
-                              boxShadow: _currentPage == index
-                                  ? [
-                                BoxShadow(
-                                  color: _pages[_currentPage].color.withOpacity(0.4),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                )
-                              ]
-                                  : [],
                             ),
                           );
                         }),
                       ),
                       const SizedBox(height: 24),
                       if (_currentPage < _pages.length - 1)
-                      // Next button
-                        _buildModernButton(
-                          onPressed: () {
-                            _pageController.nextPage(
-                              duration: const Duration(milliseconds: 400),
-                              curve: Curves.easeInOut,
-                            );
-                          },
-                          label: 'Next',
-                          icon: Icons.arrow_forward_rounded,
-                          color: _pages[_currentPage].color,
-                        )
+                        _buildNextButton()
                       else
-                      // Swipe to Login with matching theme
                         SwipeToLogin(
                           onSwipeComplete: () {
-                            Navigator.push(
+                            Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => const LoginScreen()),
+                              MaterialPageRoute(
+                                  builder: (_) => const LoginScreen()),
                             );
-
-                            print('Navigating to login...');
                           },
                           color: _pages[_currentPage].color,
-                          gradientStart: _pages[_currentPage].gradientStart,
+                          gradientStart:
+                          _pages[_currentPage].gradientStart,
                           gradientEnd: _pages[_currentPage].gradientEnd,
                         ),
                     ],
@@ -250,25 +228,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
     );
   }
 
-  Widget _buildModernButton({
-    required VoidCallback onPressed,
-    required String label,
-    required IconData icon,
-    required Color color,
-  }) {
+  Widget _buildNextButton() {
     return Container(
       width: double.infinity,
       height: 60,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
-        gradient: LinearGradient(
-          colors: [color, color.withOpacity(0.8)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
+        gradient: LinearGradient(colors: [
+          _pages[_currentPage].gradientStart,
+          _pages[_currentPage].gradientEnd,
+        ]),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.3),
+            color: _pages[_currentPage].color.withOpacity(0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -277,26 +249,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onPressed,
+          onTap: () => _pageController.nextPage(
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOut,
+          ),
           borderRadius: BorderRadius.circular(18),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  label,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Next',
                   style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Icon(icon, color: Colors.white, size: 24),
-              ],
-            ),
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white)),
+              const SizedBox(width: 8),
+              const Icon(Icons.arrow_forward_rounded,
+                  color: Colors.white, size: 22),
+            ],
           ),
         ),
       ),
@@ -304,117 +273,76 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
   }
 }
 
+// ─── ONBOARDING DATA ──────────────────────────────────────────────────────────
 class OnboardingData {
-  final String imagePath;
   final String title;
   final String description;
+  final IconData icon;
   final Color color;
   final Color gradientStart;
   final Color gradientEnd;
 
   OnboardingData({
-    required this.imagePath,
     required this.title,
     required this.description,
+    required this.icon,
     required this.color,
     required this.gradientStart,
     required this.gradientEnd,
   });
 }
 
-class OnboardingPage extends StatelessWidget {
+// ─── ONBOARDING PAGE ──────────────────────────────────────────────────────────
+class _OnboardingPage extends StatelessWidget {
   final OnboardingData data;
   final bool isActive;
 
-  const OnboardingPage({
-    Key? key,
-    required this.data,
-    required this.isActive,
-  }) : super(key: key);
+  const _OnboardingPage({required this.data, required this.isActive});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      padding: const EdgeInsets.symmetric(horizontal: 28),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Image container with modern design
           TweenAnimationBuilder<double>(
             duration: const Duration(milliseconds: 600),
-            tween: Tween(begin: 0.8, end: 1.0),
+            tween: Tween(begin: 0.7, end: 1.0),
             curve: Curves.easeOut,
-            builder: (context, value, child) {
-              return Transform.scale(
-                scale: value,
-                child: child,
-              );
-            },
+            builder: (_, v, child) => Transform.scale(scale: v, child: child),
             child: Container(
-              height: 320,
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
+              width: 220,
+              height: 220,
               decoration: BoxDecoration(
-                color: data.color.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(32),
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    data.gradientStart.withOpacity(0.15),
+                    data.gradientEnd.withOpacity(0.08),
+                  ],
+                ),
                 border: Border.all(
-                  color: data.color.withOpacity(0.1),
-                  width: 2,
-                ),
+                    color: data.color.withOpacity(0.15), width: 2),
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: Image.asset(
-                  data.imagePath,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            data.gradientStart.withOpacity(0.2),
-                            data.gradientEnd.withOpacity(0.1),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Center(
-                        child: Icon(
-                          Icons.image_outlined,
-                          size: 80,
-                          color: data.color.withOpacity(0.4),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
+              child: Icon(data.icon, size: 100, color: data.color),
             ),
           ),
-
-          const SizedBox(height: 30),
-
-          // Title with modern typography
+          const SizedBox(height: 44),
           TweenAnimationBuilder<double>(
-            duration: const Duration(milliseconds: 800),
+            duration: const Duration(milliseconds: 700),
             tween: Tween(begin: 0.0, end: 1.0),
-            curve: Curves.easeOut,
-            builder: (context, value, child) {
-              return Opacity(
-                opacity: value,
+            builder: (_, v, child) => Opacity(
+                opacity: v,
                 child: Transform.translate(
-                  offset: Offset(0, 20 * (1 - value)),
-                  child: child,
-                ),
-              );
-            },
+                    offset: Offset(0, 20 * (1 - v)), child: child)),
             child: Text(
               data.title,
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
-                fontSize: 25,
+                fontSize: 28,
                 fontWeight: FontWeight.w800,
                 color: const Color(0xFF0F172A),
                 height: 1.2,
@@ -422,35 +350,18 @@ class OnboardingPage extends StatelessWidget {
               ),
             ),
           ),
-
           const SizedBox(height: 20),
-
-          // Description
           TweenAnimationBuilder<double>(
-            duration: const Duration(milliseconds: 1000),
+            duration: const Duration(milliseconds: 900),
             tween: Tween(begin: 0.0, end: 1.0),
-            curve: Curves.easeOut,
-            builder: (context, value, child) {
-              return Opacity(
-                opacity: value,
-                child: Transform.translate(
-                  offset: Offset(0, 20 * (1 - value)),
-                  child: child,
-                ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Text(
-                data.description,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  color: const Color(0xFF64748B),
-                  height: 1.7,
-                  letterSpacing: 0.2,
-                  fontWeight: FontWeight.w400,
-                ),
+            builder: (_, v, child) => Opacity(opacity: v, child: child),
+            child: Text(
+              data.description,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                color: const Color(0xFF64748B),
+                height: 1.7,
               ),
             ),
           ),
@@ -460,8 +371,7 @@ class OnboardingPage extends StatelessWidget {
   }
 }
 
-// Enhanced Swipe to Login Widget with matching theme
-// Enhanced Swipe to Login Widget with proper fixes
+// ─── SWIPE TO LOGIN ───────────────────────────────────────────────────────────
 class SwipeToLogin extends StatefulWidget {
   final VoidCallback onSwipeComplete;
   final Color color;
@@ -480,14 +390,12 @@ class SwipeToLogin extends StatefulWidget {
   State<SwipeToLogin> createState() => _SwipeToLoginState();
 }
 
-class _SwipeToLoginState extends State<SwipeToLogin> with TickerProviderStateMixin {
+class _SwipeToLoginState extends State<SwipeToLogin>
+    with TickerProviderStateMixin {
   double _dragPosition = 0;
   bool _isComplete = false;
-  late AnimationController _pulseController;
   late AnimationController _shimmerController;
-  late AnimationController _glowController;
 
-  // Button and container dimensions
   static const double buttonWidth = 70.0;
   static const double containerHeight = 64.0;
   static const double borderRadius = 20.0;
@@ -495,289 +403,142 @@ class _SwipeToLoginState extends State<SwipeToLogin> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    )..repeat(reverse: true);
-
     _shimmerController = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     )..repeat();
-
-    _glowController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    )..repeat(reverse: true);
   }
 
   @override
   void dispose() {
-    _pulseController.dispose();
     _shimmerController.dispose();
-    _glowController.dispose();
     super.dispose();
-  }
-
-  void _onHorizontalDragUpdate(DragUpdateDetails details, double maxDrag) {
-    if (!_isComplete) {
-      setState(() {
-        _dragPosition = (_dragPosition + details.delta.dx).clamp(0.0, maxDrag);
-      });
-    }
-  }
-
-  void _onHorizontalDragEnd(DragEndDetails details, double maxDrag) {
-    if (_dragPosition > maxDrag * 0.75) {
-      setState(() {
-        _isComplete = true;
-        _dragPosition = maxDrag;
-      });
-      Future.delayed(const Duration(milliseconds: 500), () {
-        widget.onSwipeComplete();
-      });
-    } else {
-      setState(() {
-        _dragPosition = 0;
-      });
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final maxDrag = constraints.maxWidth - buttonWidth;
-
-        return Container(
-          width: double.infinity,
-          height: containerHeight,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(borderRadius),
-            gradient: LinearGradient(
-              colors: [
-                widget.color.withOpacity(0.08),
-                widget.color.withOpacity(0.05),
-              ],
-            ),
-            border: Border.all(
-              color: widget.color.withOpacity(0.15),
-              width: 2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: widget.color.withOpacity(0.1),
-                blurRadius: 20,
-                offset: const Offset(0, 6),
+    return LayoutBuilder(builder: (ctx, constraints) {
+      final maxDrag = constraints.maxWidth - buttonWidth;
+      return Container(
+        width: double.infinity,
+        height: containerHeight,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(borderRadius),
+          color: widget.color.withOpacity(0.06),
+          border: Border.all(color: widget.color.withOpacity(0.15), width: 2),
+        ),
+        child: Stack(children: [
+          // Fill
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 100),
+            width: _dragPosition + buttonWidth,
+            height: containerHeight,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: _isComplete
+                    ? [const Color(0xFF10B981), const Color(0xFF059669)]
+                    : [widget.gradientStart, widget.gradientEnd],
               ),
-            ],
+              borderRadius: BorderRadius.circular(borderRadius - 2),
+            ),
           ),
-          child: Stack(
-            children: [
-              // Progress fill with gradient
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: _dragPosition + buttonWidth,
+
+          // Label
+          Center(
+            child: AnimatedOpacity(
+              opacity: _dragPosition < 80 ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              child: Text(
+                'Swipe to Get Started',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: widget.color,
+                ),
+              ),
+            ),
+          ),
+
+          // Success
+          if (_isComplete)
+            Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.check_circle_rounded,
+                      color: Colors.white, size: 26),
+                  const SizedBox(width: 10),
+                  Text('Welcome!',
+                      style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white)),
+                ],
+              ),
+            ),
+
+          // Drag handle
+          Positioned(
+            left: _dragPosition,
+            top: 0,
+            bottom: 0,
+            child: GestureDetector(
+              onHorizontalDragUpdate: (d) {
+                if (!_isComplete) {
+                  setState(() {
+                    _dragPosition =
+                        (_dragPosition + d.delta.dx).clamp(0.0, maxDrag);
+                  });
+                }
+              },
+              onHorizontalDragEnd: (d) {
+                if (_dragPosition > maxDrag * 0.75) {
+                  setState(() {
+                    _isComplete = true;
+                    _dragPosition = maxDrag;
+                  });
+                  Future.delayed(const Duration(milliseconds: 400),
+                      widget.onSwipeComplete);
+                } else {
+                  setState(() => _dragPosition = 0);
+                }
+              },
+              child: Container(
+                width: buttonWidth,
                 height: containerHeight,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: _isComplete
-                        ? [const Color(0xFF10B981), const Color(0xFF059669)]
-                        : [widget.gradientStart, widget.gradientEnd],
-                  ),
-                  borderRadius: BorderRadius.circular(borderRadius - 2),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(borderRadius),
+                  border: Border.all(
+                      color: widget.color.withOpacity(0.3), width: 2),
                   boxShadow: [
                     BoxShadow(
-                      color: (_isComplete ? const Color(0xFF10B981) : widget.color).withOpacity(0.4),
+                      color: widget.color.withOpacity(0.25),
                       blurRadius: 20,
-                      offset: const Offset(0, 6),
+                      offset: const Offset(0, 8),
                     ),
                   ],
                 ),
-              ),
-
-              // Animated glow effect
-              if (!_isComplete && _dragPosition < 80)
-                AnimatedBuilder(
-                  animation: _glowController,
-                  builder: (context, child) {
-                    return Positioned.fill(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(borderRadius - 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: widget.color.withOpacity(0.2 * _glowController.value),
-                              blurRadius: 15,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-
-              // Enhanced shimmer effect
-              if (!_isComplete && _dragPosition < 80)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(borderRadius - 2),
-                  child: AnimatedBuilder(
-                    animation: _shimmerController,
-                    builder: (context, child) {
-                      return Stack(
-                        children: [
-                          Positioned(
-                            left: -150 + (_shimmerController.value * (constraints.maxWidth + 300)),
-                            child: Transform.rotate(
-                              angle: 0.3,
-                              child: Container(
-                                width: 150,
-                                height: 100,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      Colors.white.withOpacity(0),
-                                      widget.color.withOpacity(0.15),
-                                      Colors.white.withOpacity(0.25),
-                                      widget.color.withOpacity(0.15),
-                                      Colors.white.withOpacity(0),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-
-              // Text with better visibility
-              Center(
-                child: AnimatedOpacity(
-                  opacity: _dragPosition < 100 ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 200),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const SizedBox(width: 12),
-                      Text(
-                        'Swipe to Get Started',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: widget.color,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Success text
-              if (_isComplete)
-                Center(
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0.0, end: 1.0),
-                    duration: const Duration(milliseconds: 400),
-                    builder: (context, value, child) {
-                      return Opacity(
-                        opacity: value,
-                        child: Transform.scale(
-                          scale: 0.8 + (value * 0.2),
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.check_circle_rounded,
-                          color: Colors.white,
-                          size: 26,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Welcome!',
-                          style: GoogleFonts.poppins(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-              // Draggable button with enhanced design
-              Positioned(
-                left: _dragPosition,
-                top: 0,
-                bottom: 0,
-                child: GestureDetector(
-                  onHorizontalDragUpdate: (details) => _onHorizontalDragUpdate(details, maxDrag),
-                  onHorizontalDragEnd: (details) => _onHorizontalDragEnd(details, maxDrag),
-                  child: AnimatedContainer(
+                child: Center(
+                  child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 300),
-                    width: buttonWidth,
-                    height: containerHeight,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: _isComplete
-                            ? [Colors.white, Colors.white]
-                            : [
-                          Colors.white,
-                          Colors.grey.shade50,
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(borderRadius),
-                      border: Border.all(
-                        color: _isComplete
-                            ? const Color(0xFF10B981).withOpacity(0.3)
-                            : widget.color.withOpacity(0.2),
-                        width: 2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: (_isComplete ? const Color(0xFF10B981) : widget.color).withOpacity(0.3),
-                          blurRadius: 25,
-                          offset: const Offset(0, 10),
-                        ),
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 15,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        child: Icon(
-                          _isComplete ? Icons.check_rounded : Icons.arrow_forward_rounded,
-                          key: ValueKey(_isComplete),
-                          color: _isComplete ? const Color(0xFF10B981) : widget.color,
-                          size: 32,
-                        ),
-                      ),
+                    child: Icon(
+                      _isComplete
+                          ? Icons.check_rounded
+                          : Icons.arrow_forward_rounded,
+                      key: ValueKey(_isComplete),
+                      color: _isComplete
+                          ? const Color(0xFF10B981)
+                          : widget.color,
+                      size: 30,
                     ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        );
-      },
-    );
+        ]),
+      );
+    });
   }
 }
