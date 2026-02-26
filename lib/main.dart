@@ -1,13 +1,20 @@
 // lib/main.dart
-import 'package:child_safe/shared.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'Splash&Onboarding/SplashScreen.dart';
+import 'shared.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 FlutterLocalNotificationsPlugin();
+
+const AndroidNotificationChannel channel = AndroidNotificationChannel(
+  'childsafe_channel',
+  'ChildSafe Alerts',
+  description: 'Missing child alerts and updates',
+  importance: Importance.max,
+);
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -18,17 +25,31 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
-  // Background message handler
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // Local notifications setup
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(channel);
+
   const AndroidInitializationSettings androidInit =
   AndroidInitializationSettings('@mipmap/ic_launcher');
+  const DarwinInitializationSettings iosInit = DarwinInitializationSettings(
+    requestAlertPermission: true,
+    requestBadgePermission: true,
+    requestSoundPermission: true,
+  );
   const InitializationSettings initSettings =
-  InitializationSettings(android: androidInit);
-  await flutterLocalNotificationsPlugin.initialize(initSettings, settings: );
+  InitializationSettings(android: androidInit, iOS: iosInit);
+  await flutterLocalNotificationsPlugin.initialize(initSettings);
 
-  // FCM foreground notifications
+  // Request notification permissions
+  await FirebaseMessaging.instance.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     RemoteNotification? notification = message.notification;
     AndroidNotification? android = message.notification?.android;
@@ -37,11 +58,11 @@ void main() async {
         notification.hashCode,
         notification.title,
         notification.body,
-        const NotificationDetails(
+        NotificationDetails(
           android: AndroidNotificationDetails(
-            'childsafe_channel',
-            'ChildSafe Alerts',
-            channelDescription: 'Missing child alerts and updates',
+            channel.id,
+            channel.name,
+            channelDescription: channel.description,
             importance: Importance.max,
             priority: Priority.high,
             icon: '@mipmap/ic_launcher',

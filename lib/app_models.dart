@@ -1,13 +1,12 @@
-// lib/Models/app_models.dart
+// lib/app_models.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-// ─── APP USER ──────────────────────────────────────────────────────────────────
 class AppUser {
   final String uid;
   final String name;
   final String email;
   final String phone;
-  final String role; // parent | volunteer | authority
+  final String role;
   final String? photoUrl;
   final int points;
   final String? fcmToken;
@@ -68,7 +67,6 @@ class AppUser {
   }
 }
 
-// ─── CHILD PROFILE ─────────────────────────────────────────────────────────────
 class ChildProfile {
   final String id;
   final String parentUid;
@@ -80,7 +78,7 @@ class ChildProfile {
   final String description;
   final String emergencyContact;
   final List<String> medicalConditions;
-  final String status; // safe | missing
+  final String status;
   final DateTime? createdAt;
 
   ChildProfile({
@@ -98,20 +96,21 @@ class ChildProfile {
     this.createdAt,
   });
 
-  factory ChildProfile.fromMap(String id, Map<String, dynamic> m) => ChildProfile(
-    id: id,
-    parentUid: m['parentUid'] ?? '',
-    name: m['name'] ?? '',
-    age: (m['age'] ?? 0).toInt(),
-    gender: m['gender'] ?? 'Unknown',
-    photoUrl: m['photoUrl'],
-    bloodGroup: m['bloodGroup'] ?? 'Unknown',
-    description: m['description'] ?? '',
-    emergencyContact: m['emergencyContact'] ?? '',
-    medicalConditions: List<String>.from(m['medicalConditions'] ?? []),
-    status: m['status'] ?? 'safe',
-    createdAt: (m['createdAt'] as Timestamp?)?.toDate(),
-  );
+  factory ChildProfile.fromMap(String id, Map<String, dynamic> m) =>
+      ChildProfile(
+        id: id,
+        parentUid: m['parentUid'] ?? '',
+        name: m['name'] ?? '',
+        age: (m['age'] ?? 0).toInt(),
+        gender: m['gender'] ?? 'Unknown',
+        photoUrl: m['photoUrl'],
+        bloodGroup: m['bloodGroup'] ?? 'Unknown',
+        description: m['description'] ?? '',
+        emergencyContact: m['emergencyContact'] ?? '',
+        medicalConditions: List<String>.from(m['medicalConditions'] ?? []),
+        status: m['status'] ?? 'safe',
+        createdAt: (m['createdAt'] as Timestamp?)?.toDate(),
+      );
 
   Map<String, dynamic> toMap() => {
     'parentUid': parentUid,
@@ -128,7 +127,6 @@ class ChildProfile {
   };
 }
 
-// ─── MISSING ALERT ─────────────────────────────────────────────────────────────
 class MissingAlert {
   final String id;
   final String childId;
@@ -142,7 +140,7 @@ class MissingAlert {
   final double? lastSeenLng;
   final String description;
   final String clothingDescription;
-  final String status; // active | found | closed
+  final String status;
   final DateTime reportedAt;
   final DateTime? foundAt;
   final int sightingCount;
@@ -168,25 +166,27 @@ class MissingAlert {
     this.resolvedBy,
   });
 
-  factory MissingAlert.fromMap(String id, Map<String, dynamic> m) => MissingAlert(
-    id: id,
-    childId: m['childId'] ?? '',
-    childName: m['childName'] ?? '',
-    childAge: (m['childAge'] ?? 0).toInt(),
-    childPhotoUrl: m['childPhotoUrl'],
-    reportedBy: m['reportedBy'] ?? '',
-    reporterName: m['reporterName'] ?? '',
-    lastSeenLocation: m['lastSeenLocation'] ?? '',
-    lastSeenLat: (m['lastSeenLat'] as num?)?.toDouble(),
-    lastSeenLng: (m['lastSeenLng'] as num?)?.toDouble(),
-    description: m['description'] ?? '',
-    clothingDescription: m['clothingDescription'] ?? '',
-    status: m['status'] ?? 'active',
-    reportedAt: (m['reportedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-    foundAt: (m['foundAt'] as Timestamp?)?.toDate(),
-    sightingCount: (m['sightingCount'] ?? 0).toInt(),
-    resolvedBy: m['resolvedBy'],
-  );
+  factory MissingAlert.fromMap(String id, Map<String, dynamic> m) =>
+      MissingAlert(
+        id: id,
+        childId: m['childId'] ?? '',
+        childName: m['childName'] ?? '',
+        childAge: (m['childAge'] ?? 0).toInt(),
+        childPhotoUrl: m['childPhotoUrl'],
+        reportedBy: m['reportedBy'] ?? '',
+        reporterName: m['reporterName'] ?? '',
+        lastSeenLocation: m['lastSeenLocation'] ?? '',
+        lastSeenLat: (m['lastSeenLat'] as num?)?.toDouble(),
+        lastSeenLng: (m['lastSeenLng'] as num?)?.toDouble(),
+        description: m['description'] ?? '',
+        clothingDescription: m['clothingDescription'] ?? '',
+        status: m['status'] ?? 'active',
+        reportedAt:
+        (m['reportedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        foundAt: (m['foundAt'] as Timestamp?)?.toDate(),
+        sightingCount: (m['sightingCount'] ?? 0).toInt(),
+        resolvedBy: m['resolvedBy'],
+      );
 
   Map<String, dynamic> toMap() => {
     'childId': childId,
@@ -214,7 +214,6 @@ class MissingAlert {
   }
 }
 
-// ─── SIGHTING ──────────────────────────────────────────────────────────────────
 class Sighting {
   final String id;
   final String alertId;
@@ -250,7 +249,8 @@ class Sighting {
     lng: (m['lng'] as num?)?.toDouble(),
     description: m['description'] ?? '',
     photoUrl: m['photoUrl'],
-    reportedAt: (m['reportedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    reportedAt:
+    (m['reportedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
   );
 
   Map<String, dynamic> toMap() => {
@@ -266,14 +266,17 @@ class Sighting {
   };
 }
 
-// ─── LOCATION UPDATE ───────────────────────────────────────────────────────────
 class LocationUpdate {
   final String childId;
   final double lat;
   final double lng;
   final DateTime? timestamp;
 
-  LocationUpdate({required this.childId, required this.lat, required this.lng, this.timestamp});
+  LocationUpdate(
+      {required this.childId,
+        required this.lat,
+        required this.lng,
+        this.timestamp});
 
   factory LocationUpdate.fromMap(Map<String, dynamic> m) => LocationUpdate(
     childId: m['childId'] ?? '',
@@ -283,7 +286,6 @@ class LocationUpdate {
   );
 }
 
-// ─── ALERT COMMENT ─────────────────────────────────────────────────────────────
 class AlertComment {
   final String id;
   final String alertId;
@@ -303,15 +305,16 @@ class AlertComment {
     required this.createdAt,
   });
 
-  factory AlertComment.fromMap(String id, Map<String, dynamic> m) => AlertComment(
-    id: id,
-    alertId: m['alertId'] ?? '',
-    authorUid: m['authorUid'] ?? '',
-    authorName: m['authorName'] ?? '',
-    authorPhotoUrl: m['authorPhotoUrl'],
-    text: m['text'] ?? '',
-    createdAt: (m['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-  );
+  factory AlertComment.fromMap(String id, Map<String, dynamic> m) =>
+      AlertComment(
+        id: id,
+        alertId: m['alertId'] ?? '',
+        authorUid: m['authorUid'] ?? '',
+        authorName: m['authorName'] ?? '',
+        authorPhotoUrl: m['authorPhotoUrl'],
+        text: m['text'] ?? '',
+        createdAt: (m['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      );
 
   Map<String, dynamic> toMap() => {
     'alertId': alertId,
@@ -323,13 +326,12 @@ class AlertComment {
   };
 }
 
-// ─── APP NOTIFICATION ──────────────────────────────────────────────────────────
 class AppNotification {
   final String id;
   final String recipientUid;
   final String title;
   final String body;
-  final String type; // alert | sighting | found | system
+  final String type;
   final String? relatedId;
   final bool read;
   final DateTime createdAt;
@@ -345,16 +347,17 @@ class AppNotification {
     required this.createdAt,
   });
 
-  factory AppNotification.fromMap(String id, Map<String, dynamic> m) => AppNotification(
-    id: id,
-    recipientUid: m['recipientUid'] ?? '',
-    title: m['title'] ?? '',
-    body: m['body'] ?? '',
-    type: m['type'] ?? 'system',
-    relatedId: m['relatedId'],
-    read: m['read'] ?? false,
-    createdAt: (m['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-  );
+  factory AppNotification.fromMap(String id, Map<String, dynamic> m) =>
+      AppNotification(
+        id: id,
+        recipientUid: m['recipientUid'] ?? '',
+        title: m['title'] ?? '',
+        body: m['body'] ?? '',
+        type: m['type'] ?? 'system',
+        relatedId: m['relatedId'],
+        read: m['read'] ?? false,
+        createdAt: (m['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      );
 
   Map<String, dynamic> toMap() => {
     'recipientUid': recipientUid,

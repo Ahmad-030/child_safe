@@ -1,8 +1,8 @@
 // lib/Splash&Onboarding/OnboardingScreen.dart
-import 'package:child_safe/Authentication/LoginScreen.dart';
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:google_fonts/google_fonts.dart';
+import '../Authentication/LoginScreen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({Key? key}) : super(key: key);
@@ -101,7 +101,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           SafeArea(
             child: Column(
               children: [
-                // Skip button
                 Padding(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 20.0, vertical: 8.0),
@@ -157,8 +156,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     ],
                   ),
                 ),
-
-                // Page view
                 Expanded(
                   child: PageView.builder(
                     controller: _pageController,
@@ -175,20 +172,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     ),
                   ),
                 ),
-
-                // Bottom controls
                 Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: Column(
                     children: [
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children:
-                        List.generate(_pages.length, (i) {
+                        children: List.generate(_pages.length, (i) {
                           return AnimatedContainer(
                             duration: const Duration(milliseconds: 300),
-                            margin:
-                            const EdgeInsets.symmetric(horizontal: 4),
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
                             width: _currentPage == i ? 36 : 8,
                             height: 8,
                             decoration: BoxDecoration(
@@ -213,8 +206,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                             );
                           },
                           color: _pages[_currentPage].color,
-                          gradientStart:
-                          _pages[_currentPage].gradientStart,
+                          gradientStart: _pages[_currentPage].gradientStart,
                           gradientEnd: _pages[_currentPage].gradientEnd,
                         ),
                     ],
@@ -273,7 +265,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 }
 
-// ─── ONBOARDING DATA ──────────────────────────────────────────────────────────
 class OnboardingData {
   final String title;
   final String description;
@@ -292,7 +283,6 @@ class OnboardingData {
   });
 }
 
-// ─── ONBOARDING PAGE ──────────────────────────────────────────────────────────
 class _OnboardingPage extends StatelessWidget {
   final OnboardingData data;
   final bool isActive;
@@ -310,7 +300,8 @@ class _OnboardingPage extends StatelessWidget {
             duration: const Duration(milliseconds: 600),
             tween: Tween(begin: 0.7, end: 1.0),
             curve: Curves.easeOut,
-            builder: (_, v, child) => Transform.scale(scale: v, child: child),
+            builder: (_, v, child) =>
+                Transform.scale(scale: v, child: child),
             child: Container(
               width: 220,
               height: 220,
@@ -371,7 +362,6 @@ class _OnboardingPage extends StatelessWidget {
   }
 }
 
-// ─── SWIPE TO LOGIN ───────────────────────────────────────────────────────────
 class SwipeToLogin extends StatefulWidget {
   final VoidCallback onSwipeComplete;
   final Color color;
@@ -428,7 +418,6 @@ class _SwipeToLoginState extends State<SwipeToLogin>
           border: Border.all(color: widget.color.withOpacity(0.15), width: 2),
         ),
         child: Stack(children: [
-          // Fill
           AnimatedContainer(
             duration: const Duration(milliseconds: 100),
             width: _dragPosition + buttonWidth,
@@ -442,8 +431,6 @@ class _SwipeToLoginState extends State<SwipeToLogin>
               borderRadius: BorderRadius.circular(borderRadius - 2),
             ),
           ),
-
-          // Label
           Center(
             child: AnimatedOpacity(
               opacity: _dragPosition < 80 ? 1.0 : 0.0,
@@ -458,8 +445,6 @@ class _SwipeToLoginState extends State<SwipeToLogin>
               ),
             ),
           ),
-
-          // Success
           if (_isComplete)
             Center(
               child: Row(
@@ -476,8 +461,6 @@ class _SwipeToLoginState extends State<SwipeToLogin>
                 ],
               ),
             ),
-
-          // Drag handle
           Positioned(
             left: _dragPosition,
             top: 0,

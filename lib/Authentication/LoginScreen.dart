@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import '../HomeScreen.dart';
 import '../firebase_service.dart';
 import '../shared.dart';
 import 'SignUpScreen.dart';
@@ -60,13 +60,19 @@ class _LoginScreenState extends State<LoginScreen>
       return;
     }
 
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final cred = await FirebaseService.signIn(email, password);
       await FirebaseService.saveFcmToken(cred.user!.uid);
       if (mounted) {
-        Navigator.pushAndRemoveUntil(context,
-            MaterialPageRoute(builder: (_) => const HomeScreen()), (_) => false);
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+              (_) => false,
+        );
       }
     } on FirebaseAuthException catch (e) {
       setState(() => _error = _mapError(e.code));
@@ -121,8 +127,6 @@ class _LoginScreenState extends State<LoginScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 30),
-
-                      // Logo
                       Center(
                         child: Container(
                           width: 86,
@@ -134,7 +138,8 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF2563EB).withOpacity(0.3),
+                                color:
+                                const Color(0xFF2563EB).withOpacity(0.3),
                                 blurRadius: 20,
                                 offset: const Offset(0, 8),
                               ),
@@ -152,9 +157,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 fontWeight: FontWeight.w900,
                                 color: const Color(0xFF2563EB))),
                       ),
-
                       const SizedBox(height: 36),
-                      // Tabs
                       Row(children: [
                         _buildTab('Login', true),
                         const SizedBox(width: 16),
@@ -165,10 +168,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   builder: (_) => const SignupScreen()));
                         }),
                       ]),
-
                       const SizedBox(height: 28),
-
-                      // Email
                       _buildTextField(
                         controller: _emailController,
                         label: 'Email Address',
@@ -176,8 +176,6 @@ class _LoginScreenState extends State<LoginScreen>
                         keyboardType: TextInputType.emailAddress,
                       ),
                       const SizedBox(height: 16),
-
-                      // Password
                       _buildTextField(
                         controller: _passwordController,
                         label: 'Password',
@@ -191,11 +189,10 @@ class _LoginScreenState extends State<LoginScreen>
                                 : Icons.visibility_off_outlined,
                             color: const Color(0xFF64748B),
                           ),
-                          onPressed: () =>
-                              setState(() => _obscurePassword = !_obscurePassword),
+                          onPressed: () => setState(
+                                  () => _obscurePassword = !_obscurePassword),
                         ),
                       ),
-
                       const SizedBox(height: 10),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -233,8 +230,6 @@ class _LoginScreenState extends State<LoginScreen>
                           ),
                         ],
                       ),
-
-                      // Error
                       if (_error != null) ...[
                         const SizedBox(height: 12),
                         Container(
@@ -256,7 +251,6 @@ class _LoginScreenState extends State<LoginScreen>
                           ]),
                         ),
                       ],
-
                       const SizedBox(height: 24),
                       _buildGradientButton(
                         onPressed: _isLoading ? () {} : _handleLogin,
@@ -265,8 +259,6 @@ class _LoginScreenState extends State<LoginScreen>
                         isLoading: _isLoading,
                       ),
                       const SizedBox(height: 24),
-
-                      // Emergency button
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 300),
                         decoration: BoxDecoration(
@@ -289,7 +281,8 @@ class _LoginScreenState extends State<LoginScreen>
                                 Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.danger.withOpacity(0.12),
+                                    color:
+                                    AppTheme.danger.withOpacity(0.12),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(Icons.emergency_rounded,
@@ -307,7 +300,8 @@ class _LoginScreenState extends State<LoginScreen>
                                               fontWeight: FontWeight.w800,
                                               color: AppTheme.danger,
                                               letterSpacing: 0.8)),
-                                      Text('Report Missing Child – No Login Required',
+                                      Text(
+                                          'Report Missing Child – No Login Required',
                                           style: GoogleFonts.poppins(
                                               fontSize: 12,
                                               color: AppTheme.textMid)),
@@ -386,13 +380,13 @@ class _LoginScreenState extends State<LoginScreen>
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
-        style: GoogleFonts.poppins(fontSize: 15, color: const Color(0xFF0F172A)),
+        style: GoogleFonts.poppins(
+            fontSize: 15, color: const Color(0xFF0F172A)),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle:
-          GoogleFonts.poppins(fontSize: 15, color: const Color(0xFF64748B)),
-          prefixIcon:
-          Icon(icon, color: const Color(0xFF2563EB)),
+          labelStyle: GoogleFonts.poppins(
+              fontSize: 15, color: const Color(0xFF64748B)),
+          prefixIcon: Icon(icon, color: const Color(0xFF2563EB)),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
           contentPadding:

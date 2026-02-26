@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../EmergencyScreen/EmergencyAlert.dart';
+import '../HomeScreen.dart';
 import '../app_models.dart';
 import '../firebase_service.dart';
 import '../shared.dart';
@@ -82,7 +83,10 @@ class _SignupScreenState extends State<SignupScreen>
   }
 
   Future<void> _register(String role) async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final cred = await FirebaseService.signUp(
           _emailController.text.trim(), _passwordController.text);
@@ -97,8 +101,11 @@ class _SignupScreenState extends State<SignupScreen>
       await FirebaseService.createUserProfile(user);
       await FirebaseService.saveFcmToken(uid);
       if (mounted) {
-        Navigator.pushAndRemoveUntil(context,
-            MaterialPageRoute(builder: (_) => const HomeScreen()), (_) => false);
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+              (_) => false,
+        );
       }
     } on FirebaseAuthException catch (e) {
       setState(() => _error = e.message ?? 'Registration failed');
@@ -149,8 +156,6 @@ class _SignupScreenState extends State<SignupScreen>
                               fontSize: 14,
                               color: const Color(0xFF64748B))),
                       const SizedBox(height: 28),
-
-                      // Tabs
                       Row(children: [
                         _buildTab('Login', false,
                             onTap: () => Navigator.pushReplacement(
@@ -160,10 +165,7 @@ class _SignupScreenState extends State<SignupScreen>
                         const SizedBox(width: 16),
                         _buildTab('Sign Up', true),
                       ]),
-
                       const SizedBox(height: 28),
-
-                      // Error
                       if (_error != null) ...[
                         Container(
                           padding: const EdgeInsets.all(12),
@@ -184,9 +186,10 @@ class _SignupScreenState extends State<SignupScreen>
                         ),
                         const SizedBox(height: 14),
                       ],
-
-                      _buildTextField(controller: _usernameController,
-                          label: 'Full Name', icon: Icons.person_outline_rounded),
+                      _buildTextField(
+                          controller: _usernameController,
+                          label: 'Full Name',
+                          icon: Icons.person_outline_rounded),
                       const SizedBox(height: 14),
                       _buildTextField(
                           controller: _emailController,
@@ -217,17 +220,15 @@ class _SignupScreenState extends State<SignupScreen>
                                   () => _obscurePassword = !_obscurePassword),
                         ),
                       ),
-
                       const SizedBox(height: 28),
                       _buildGradientButton(
-                        onPressed: _isLoading ? null : _showRoleSelectionDialog,
+                        onPressed:
+                        _isLoading ? null : _showRoleSelectionDialog,
                         label: _isLoading ? 'Creating...' : 'Sign Up',
                         icon: Icons.arrow_forward_rounded,
                         isLoading: _isLoading,
                       ),
                       const SizedBox(height: 20),
-
-                      // Emergency button
                       AnimatedBuilder(
                         animation: _pulseController,
                         builder: (_, __) => Transform.scale(
@@ -298,8 +299,10 @@ class _SignupScreenState extends State<SignupScreen>
                                           ],
                                         ),
                                       ),
-                                      const Icon(Icons.arrow_forward_rounded,
-                                          color: Colors.white, size: 22),
+                                      const Icon(
+                                          Icons.arrow_forward_rounded,
+                                          color: Colors.white,
+                                          size: 22),
                                     ]),
                                   ),
                                 ),
@@ -445,12 +448,9 @@ class _SignupScreenState extends State<SignupScreen>
   }
 }
 
-// ─── ROLE SELECTION DIALOG ────────────────────────────────────────────────────
-enum SnackBarType { success, error, warning, info }
-
+// Role selection dialog
 class RoleSelectionDialog extends StatefulWidget {
   final Function(String) onRoleSelected;
-
   const RoleSelectionDialog({Key? key, required this.onRoleSelected})
       : super(key: key);
 
@@ -512,11 +512,15 @@ class _RoleSelectionDialogState extends State<RoleSelectionDialog>
             _buildRoleOption('Parent', 'Register & track child profiles',
                 Icons.family_restroom_rounded, const Color(0xFF2563EB)),
             const SizedBox(height: 10),
-            _buildRoleOption('Volunteer', 'Help search & report sightings',
-                Icons.volunteer_activism_rounded, const Color(0xFF0EA5E9)),
+            _buildRoleOption('Volunteer',
+                'Help search & report sightings',
+                Icons.volunteer_activism_rounded,
+                const Color(0xFF0EA5E9)),
             const SizedBox(height: 10),
-            _buildRoleOption('Authority', 'Manage cases & coordinate search',
-                Icons.shield_rounded, const Color(0xFF8B5CF6)),
+            _buildRoleOption('Authority',
+                'Manage cases & coordinate search',
+                Icons.shield_rounded,
+                const Color(0xFF8B5CF6)),
             const SizedBox(height: 24),
             Row(children: [
               Expanded(
@@ -535,11 +539,11 @@ class _RoleSelectionDialogState extends State<RoleSelectionDialog>
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: _selectedRole != null
-                          ? [const Color(0xFF3B82F6), const Color(0xFF2563EB)]
-                          : [
-                        Colors.grey.shade300,
-                        Colors.grey.shade400
-                      ],
+                          ? [
+                        const Color(0xFF3B82F6),
+                        const Color(0xFF2563EB)
+                      ]
+                          : [Colors.grey.shade300, Colors.grey.shade400],
                     ),
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -607,7 +611,8 @@ class _RoleSelectionDialogState extends State<RoleSelectionDialog>
                         style: GoogleFonts.poppins(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: isSelected ? color : const Color(0xFF0F172A))),
+                            color:
+                            isSelected ? color : const Color(0xFF0F172A))),
                     Text(subtitle,
                         style: GoogleFonts.poppins(
                             fontSize: 12, color: const Color(0xFF64748B))),
@@ -617,7 +622,8 @@ class _RoleSelectionDialogState extends State<RoleSelectionDialog>
               padding: const EdgeInsets.all(3),
               decoration:
               BoxDecoration(color: color, shape: BoxShape.circle),
-              child: const Icon(Icons.check, color: Colors.white, size: 14),
+              child:
+              const Icon(Icons.check, color: Colors.white, size: 14),
             ),
         ]),
       ),

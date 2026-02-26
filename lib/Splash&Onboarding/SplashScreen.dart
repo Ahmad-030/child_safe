@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../HomeScreen.dart';
 import 'OnboardingScreen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -87,7 +88,6 @@ class _SplashScreenState extends State<SplashScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Shield logo
                   Container(
                     width: 130,
                     height: 130,

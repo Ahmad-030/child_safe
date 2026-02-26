@@ -1,4 +1,4 @@
-// lib/Widgets/shared.dart
+// lib/shared.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_models.dart';
@@ -44,8 +44,8 @@ class AppTheme {
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         padding:
         const EdgeInsets.symmetric(vertical: 15, horizontal: 24),
-        textStyle: GoogleFonts.poppins(
-            fontSize: 16, fontWeight: FontWeight.w600),
+        textStyle:
+        GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
@@ -53,13 +53,11 @@ class AppTheme {
       fillColor: Colors.white,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide:
-        BorderSide(color: primary.withOpacity(0.2)),
+        borderSide: BorderSide(color: primary.withOpacity(0.2)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide:
-        BorderSide(color: primary.withOpacity(0.15)),
+        borderSide: BorderSide(color: primary.withOpacity(0.15)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
@@ -72,13 +70,13 @@ class AppTheme {
       color: cardBg,
       elevation: 2,
       shadowColor: Colors.black.withOpacity(0.08),
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16)),
+      shape:
+      RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
   );
 }
 
-// ─── GRADIENT BUTTON ──────────────────────────────────────────────────────────
+// ─── GRADIENT BUTTON ───────────────────────────────────────────────────────────
 class GradientButton extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
@@ -105,8 +103,7 @@ class GradientButton extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         gradient: LinearGradient(
-          colors: colors ??
-              [AppTheme.primaryLight, AppTheme.primary],
+          colors: colors ?? [AppTheme.primaryLight, AppTheme.primary],
         ),
         boxShadow: [
           BoxShadow(
@@ -153,7 +150,7 @@ class GradientButton extends StatelessWidget {
   }
 }
 
-// ─── DANGER BUTTON ────────────────────────────────────────────────────────────
+// ─── DANGER BUTTON ─────────────────────────────────────────────────────────────
 class DangerButton extends StatefulWidget {
   final String label;
   final VoidCallback? onTap;
@@ -203,8 +200,8 @@ class _DangerButtonState extends State<DangerButton>
           height: 58,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            gradient:
-            const LinearGradient(colors: [Color(0xFFEF4444), Color(0xFFDC2626)]),
+            gradient: const LinearGradient(
+                colors: [Color(0xFFEF4444), Color(0xFFDC2626)]),
             boxShadow: [
               BoxShadow(
                 color: AppTheme.danger.withOpacity(
@@ -254,7 +251,7 @@ class _DangerButtonState extends State<DangerButton>
   }
 }
 
-// ─── APP TEXT FIELD ───────────────────────────────────────────────────────────
+// ─── APP TEXT FIELD ────────────────────────────────────────────────────────────
 class AppTextField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
@@ -302,7 +299,8 @@ class AppTextField extends StatelessWidget {
         obscureText: obscure,
         keyboardType: keyboardType,
         maxLines: maxLines,
-        style: GoogleFonts.poppins(fontSize: 15, color: AppTheme.textDark),
+        style:
+        GoogleFonts.poppins(fontSize: 15, color: AppTheme.textDark),
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
@@ -310,8 +308,8 @@ class AppTextField extends StatelessWidget {
           GoogleFonts.poppins(fontSize: 14, color: AppTheme.textLight),
           hintStyle:
           GoogleFonts.poppins(fontSize: 14, color: AppTheme.textLight),
-          prefixIcon: Icon(icon,
-              color: iconColor ?? AppTheme.primary, size: 20),
+          prefixIcon:
+          Icon(icon, color: iconColor ?? AppTheme.primary, size: 20),
           suffixIcon: suffix,
           border: InputBorder.none,
           contentPadding: EdgeInsets.symmetric(
@@ -322,7 +320,7 @@ class AppTextField extends StatelessWidget {
   }
 }
 
-// ─── STATUS BADGE ─────────────────────────────────────────────────────────────
+// ─── STATUS BADGE ──────────────────────────────────────────────────────────────
 class StatusBadge extends StatelessWidget {
   final String status;
   const StatusBadge(this.status, {super.key});
@@ -366,7 +364,7 @@ class StatusBadge extends StatelessWidget {
   }
 }
 
-// ─── ALERT CARD ───────────────────────────────────────────────────────────────
+// ─── ALERT CARD ────────────────────────────────────────────────────────────────
 class AlertCard extends StatelessWidget {
   final MissingAlert alert;
   final VoidCallback? onTap;
@@ -505,7 +503,7 @@ class AlertCard extends StatelessWidget {
   }
 }
 
-// ─── CHILD CARD ───────────────────────────────────────────────────────────────
+// ─── CHILD CARD ────────────────────────────────────────────────────────────────
 class ChildCard extends StatelessWidget {
   final ChildProfile child;
   final VoidCallback? onTap;
@@ -577,7 +575,7 @@ class ChildCard extends StatelessWidget {
   }
 }
 
-// ─── STAT CARD ────────────────────────────────────────────────────────────────
+// ─── STAT CARD ─────────────────────────────────────────────────────────────────
 class StatCard extends StatelessWidget {
   final String title;
   final String value;
@@ -623,14 +621,14 @@ class StatCard extends StatelessWidget {
                 fontWeight: FontWeight.w800,
                 color: AppTheme.textDark)),
         Text(title,
-            style: GoogleFonts.poppins(
-                fontSize: 12, color: AppTheme.textLight)),
+            style:
+            GoogleFonts.poppins(fontSize: 12, color: AppTheme.textLight)),
       ]),
     );
   }
 }
 
-// ─── SECTION HEADER ───────────────────────────────────────────────────────────
+// ─── SECTION HEADER ────────────────────────────────────────────────────────────
 class SectionHeader extends StatelessWidget {
   final String title;
   final String? action;
@@ -664,7 +662,7 @@ class SectionHeader extends StatelessWidget {
   }
 }
 
-// ─── EMPTY STATE ──────────────────────────────────────────────────────────────
+// ─── EMPTY STATE ───────────────────────────────────────────────────────────────
 class EmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -697,13 +695,12 @@ class EmptyState extends StatelessWidget {
               textAlign: TextAlign.center),
           const SizedBox(height: 8),
           Text(subtitle,
-              style: GoogleFonts.poppins(
-                  fontSize: 14, color: AppTheme.textLight),
+              style:
+              GoogleFonts.poppins(fontSize: 14, color: AppTheme.textLight),
               textAlign: TextAlign.center),
           if (actionLabel != null) ...[
             const SizedBox(height: 24),
-            ElevatedButton(
-                onPressed: onAction, child: Text(actionLabel!)),
+            ElevatedButton(onPressed: onAction, child: Text(actionLabel!)),
           ],
         ]),
       ),

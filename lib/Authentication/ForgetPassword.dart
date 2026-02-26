@@ -1,8 +1,6 @@
 // lib/Authentication/ForgetPassword.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../Services/firebase_service.dart';
-import '../Widgets/shared.dart';
 import '../firebase_service.dart';
 import '../shared.dart';
 
