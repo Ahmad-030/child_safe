@@ -184,6 +184,25 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
 
         return Scaffold(
           backgroundColor: AppTheme.bg,
+          floatingActionButtonLocation:
+          FloatingActionButtonLocation.endContained,
+          floatingActionButton: alert.status == 'active'
+              ? FloatingActionButton.small(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AddSightingScreen(
+                  alertId: alert.id,
+                  childName: alert.childName,
+                  childPhotoUrl: alert.childPhotoUrl,
+                ),
+              ),
+            ),
+            backgroundColor: AppTheme.warning,
+            tooltip: 'Report Sighting',
+            child: const Icon(Icons.visibility_rounded, size: 20),
+          )
+              : null,
           body: NestedScrollView(
             headerSliverBuilder: (context, innerBoxIsScrolled) => [
               SliverAppBar(
@@ -288,26 +307,6 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
               ],
             ),
           ),
-          floatingActionButton: alert.status == 'active'
-              ? FloatingActionButton.extended(
-            // No Hero tag to avoid duplicate Hero crash
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => AddSightingScreen(
-                  alertId: alert.id,
-                  childName: alert.childName,
-                  childPhotoUrl: alert.childPhotoUrl,
-                ),
-              ),
-            ),
-            backgroundColor: AppTheme.warning,
-            icon: const Icon(Icons.visibility_rounded),
-            label: Text('Report Sighting',
-                style:
-                GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-          )
-              : null,
         );
       },
     );
@@ -723,7 +722,7 @@ class _CommentsTab extends StatelessWidget {
           ),
         ),
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
           decoration: BoxDecoration(
             color: Colors.white,
             boxShadow: [
