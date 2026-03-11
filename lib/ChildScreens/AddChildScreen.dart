@@ -1,4 +1,4 @@
-// lib/ChildProfile/AddChildScreen.dart
+// lib/ChildScreens/AddChildScreen.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -25,6 +25,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
   String _gender = 'Male';
   File? _photo;
   bool _isLoading = false;
+  bool _uploadingPhoto = false;
   final _picker = ImagePicker();
 
   @override
@@ -70,10 +71,10 @@ class _AddChildScreenState extends State<AddChildScreen> {
       String? photoUrl = widget.existingChild?.photoUrl;
 
       if (_photo != null) {
-        photoUrl = await FirebaseService.uploadImage(
-          _photo!,
-          'children/${uid}_${DateTime.now().millisecondsSinceEpoch}.jpg',
-        );
+        setState(() => _uploadingPhoto = true);
+        // Upload to Cloudinary — returns secure URL saved in Firestore
+        photoUrl = await FirebaseService.uploadImage(_photo!, 'children');
+        setState(() => _uploadingPhoto = false);
       }
 
       final meds = _medCtrl.text.trim().isNotEmpty
@@ -87,7 +88,9 @@ class _AddChildScreenState extends State<AddChildScreen> {
         age: int.tryParse(_ageCtrl.text) ?? 0,
         gender: _gender,
         photoUrl: photoUrl,
-        bloodGroup: _bloodCtrl.text.trim().isEmpty ? 'Unknown' : _bloodCtrl.text.trim(),
+        bloodGroup: _bloodCtrl.text.trim().isEmpty
+            ? 'Unknown'
+            : _bloodCtrl.text.trim(),
         description: _descCtrl.text.trim(),
         emergencyContact: _contactCtrl.text.trim(),
         medicalConditions: meds,
@@ -112,10 +115,10 @@ class _AddChildScreenState extends State<AddChildScreen> {
       }
     } catch (e) {
       if (mounted) {
+        setState(() => _uploadingPhoto = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Error: $e'),
-              backgroundColor: AppTheme.danger),
+              content: Text('Error: $e'), backgroundColor: AppTheme.danger),
         );
       }
     } finally {
@@ -136,16 +139,22 @@ class _AddChildScreenState extends State<AddChildScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Photo
+            // Photo picker
             Center(
               child: Stack(
                 children: [
                   GestureDetector(
-                    onTap: () async {
+                    onTap: _uploadingPhoto
+                        ? null
+                        : () async {
                       final file = await _picker.pickImage(
-                          source: ImageSource.gallery);
-                      if (file != null)
+                          source: ImageSource.gallery,
+                          maxWidth: 1800,
+                          maxHeight: 1800,
+                          imageQuality: 85);
+                      if (file != null) {
                         setState(() => _photo = File(file.path));
+                      }
                     },
                     child: Container(
                       width: 120,
@@ -157,9 +166,14 @@ class _AddChildScreenState extends State<AddChildScreen> {
                             color: AppTheme.primary.withOpacity(0.3),
                             width: 3),
                       ),
-                      child: _photo != null
+                      child: _uploadingPhoto
+                          ? const Center(
+                          child: CircularProgressIndicator(
+                              color: AppTheme.primary, strokeWidth: 2))
+                          : _photo != null
                           ? ClipOval(
-                          child: Image.file(_photo!, fit: BoxFit.cover))
+                          child:
+                          Image.file(_photo!, fit: BoxFit.cover))
                           : widget.existingChild?.photoUrl != null
                           ? ClipOval(
                           child: Image.network(
@@ -186,13 +200,29 @@ class _AddChildScreenState extends State<AddChildScreen> {
               ),
             ),
 
+            // Cloudinary badge
+            const SizedBox(height: 8),
+            Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.cloud_upload_rounded,
+                      size: 12, color: AppTheme.textLight),
+                  const SizedBox(width: 4),
+                  Text('Photo stored via Cloudinary',
+                      style: GoogleFonts.poppins(
+                          fontSize: 10, color: AppTheme.textLight)),
+                ],
+              ),
+            ),
+
             const SizedBox(height: 28),
 
             _label('Full Name *'),
             const SizedBox(height: 8),
             AppTextField(
                 controller: _nameCtrl,
-                label: 'Child\'s full name',
+                label: "Child's full name",
                 icon: Icons.person_rounded),
             const SizedBox(height: 16),
 
@@ -234,8 +264,8 @@ class _AddChildScreenState extends State<AddChildScreen> {
                           style: GoogleFonts.poppins(
                               fontSize: 14, color: AppTheme.textDark),
                           items: ['Male', 'Female', 'Other']
-                              .map((g) => DropdownMenuItem(
-                              value: g, child: Text(g)))
+                              .map((g) =>
+                              DropdownMenuItem(value: g, child: Text(g)))
                               .toList(),
                           onChanged: (v) =>
                               setState(() => _gender = v ?? 'Male'),
@@ -285,7 +315,9 @@ class _AddChildScreenState extends State<AddChildScreen> {
 
             GradientButton(
               label: _isLoading
-                  ? 'Saving...'
+                  ? (_uploadingPhoto
+                  ? 'Uploading photo...'
+                  : 'Saving...')
                   : widget.existingChild != null
                   ? 'Update Profile'
                   : 'Add Child',

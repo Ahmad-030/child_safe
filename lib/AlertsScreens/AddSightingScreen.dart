@@ -1,16 +1,23 @@
-// lib/Alerts/AddSightingScreen.dart
+// lib/AlertsScreens/AddSightingScreen.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../shared.dart';
 import '../../firebase_service.dart';
 import '../../app_models.dart';
+import '../face_verification_sheet.dart';
 
 class AddSightingScreen extends StatefulWidget {
   final String alertId;
-  const AddSightingScreen({super.key, required this.alertId});
+  final String childName;
+  final String? childPhotoUrl;
+  const AddSightingScreen({
+    super.key,
+    required this.alertId,
+    required this.childName,
+    this.childPhotoUrl,
+  });
 
   @override
   State<AddSightingScreen> createState() => _AddSightingScreenState();
@@ -19,11 +26,12 @@ class AddSightingScreen extends StatefulWidget {
 class _AddSightingScreenState extends State<AddSightingScreen> {
   final _locationCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
-  File? _photo;
+  File? _verifiedPhoto;
   bool _isLoading = false;
   bool _fetchingLocation = false;
+  bool _uploadingPhoto = false;
+  bool _faceVerified = false;
   double? _lat, _lng;
-  final _picker = ImagePicker();
 
   @override
   void dispose() {
@@ -53,9 +61,7 @@ class _AddSightingScreenState extends State<AddSightingScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Location error: $e'),
-              backgroundColor: AppTheme.danger),
+          SnackBar(content: Text('Location error: $e'), backgroundColor: AppTheme.danger),
         );
       }
     } finally {
@@ -63,29 +69,39 @@ class _AddSightingScreenState extends State<AddSightingScreen> {
     }
   }
 
+  void _openFaceVerification() {
+    FaceVerificationSheet.show(
+      context,
+      originalPhotoUrl: widget.childPhotoUrl,
+      childName: widget.childName,
+      actionLabel: 'Use This Photo',
+      onVerified: (File photo) {
+        setState(() {
+          _verifiedPhoto = photo;
+          _faceVerified = true;
+        });
+      },
+      onCancelled: () {},
+    );
+  }
+
   Future<void> _submit() async {
     if (_locationCtrl.text.isEmpty || _descCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Please fill all fields'),
-            backgroundColor: AppTheme.danger),
+        const SnackBar(content: Text('Please fill all fields'), backgroundColor: AppTheme.danger),
       );
       return;
     }
-
     setState(() => _isLoading = true);
     try {
       final uid = FirebaseService.currentUid!;
       final user = await FirebaseService.getUserProfile(uid);
       String? photoUrl;
-
-      if (_photo != null) {
-        photoUrl = await FirebaseService.uploadImage(
-          _photo!,
-          'sightings/${DateTime.now().millisecondsSinceEpoch}.jpg',
-        );
+      if (_verifiedPhoto != null) {
+        setState(() => _uploadingPhoto = true);
+        photoUrl = await FirebaseService.uploadImage(_verifiedPhoto!, 'sightings');
+        setState(() => _uploadingPhoto = false);
       }
-
       final sighting = Sighting(
         id: '',
         alertId: widget.alertId,
@@ -98,24 +114,18 @@ class _AddSightingScreenState extends State<AddSightingScreen> {
         photoUrl: photoUrl,
         reportedAt: DateTime.now(),
       );
-
       await FirebaseService.addSighting(sighting);
-
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Sighting reported! +10 points added.'),
-            backgroundColor: AppTheme.success,
-          ),
+          const SnackBar(content: Text('Sighting reported! +10 points added.'), backgroundColor: AppTheme.success),
         );
       }
     } catch (e) {
       if (mounted) {
+        setState(() => _uploadingPhoto = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Error: $e'),
-              backgroundColor: AppTheme.danger),
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger),
         );
       }
     } finally {
@@ -127,22 +137,19 @@ class _AddSightingScreenState extends State<AddSightingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.bg,
-      appBar: AppBar(
-        title: const Text('Report Sighting'),
-        backgroundColor: AppTheme.warning,
-      ),
+      appBar: AppBar(title: const Text('Report Sighting'), backgroundColor: AppTheme.warning),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Info banner
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: AppTheme.warning.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(14),
-                border:
-                Border.all(color: AppTheme.warning.withOpacity(0.3)),
+                border: Border.all(color: AppTheme.warning.withOpacity(0.3)),
               ),
               child: Row(children: [
                 const Icon(Icons.info_rounded, color: AppTheme.warning),
@@ -150,57 +157,98 @@ class _AddSightingScreenState extends State<AddSightingScreen> {
                 Expanded(
                   child: Text(
                     'Reporting a sighting earns you +10 points and helps locate the child faster.',
-                    style: GoogleFonts.poppins(
-                        fontSize: 13, color: AppTheme.textDark),
+                    style: GoogleFonts.poppins(fontSize: 13, color: AppTheme.textDark),
                   ),
                 ),
               ]),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-            // Photo
-            Center(
-              child: GestureDetector(
-                onTap: () async {
-                  final file =
-                  await _picker.pickImage(source: ImageSource.camera);
-                  if (file != null) setState(() => _photo = File(file.path));
-                },
-                child: Container(
-                  width: 130,
-                  height: 130,
-                  decoration: BoxDecoration(
-                    color: AppTheme.warning.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                        color: AppTheme.warning.withOpacity(0.4), width: 2),
-                  ),
-                  child: _photo != null
-                      ? ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: Image.file(_photo!, fit: BoxFit.cover))
-                      : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.camera_alt_rounded,
-                          size: 36, color: AppTheme.warning),
-                      const SizedBox(height: 8),
-                      Text('Add Photo\n(Optional)',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.poppins(
-                              color: AppTheme.warning,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600)),
-                    ],
+            // Face verification card
+            GestureDetector(
+              onTap: _openFaceVerification,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: _faceVerified
+                      ? AppTheme.success.withOpacity(0.07)
+                      : AppTheme.primary.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: _faceVerified
+                        ? AppTheme.success.withOpacity(0.4)
+                        : AppTheme.primary.withOpacity(0.25),
+                    width: 1.5,
                   ),
                 ),
+                child: Row(children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: _faceVerified
+                          ? AppTheme.success.withOpacity(0.12)
+                          : AppTheme.primary.withOpacity(0.1),
+                    ),
+                    child: _verifiedPhoto != null
+                        ? ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.file(_verifiedPhoto!, fit: BoxFit.cover),
+                    )
+                        : Icon(
+                      Icons.face_retouching_natural_rounded,
+                      size: 32,
+                      color: _faceVerified ? AppTheme.success : AppTheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _faceVerified ? 'Face Verified ✅' : 'Add Photo & Verify Face',
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: _faceVerified ? AppTheme.success : AppTheme.textDark,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          _faceVerified
+                              ? 'ML Kit confirmed this is ${widget.childName}'
+                              : 'Take a photo — ML Kit will compare with original',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: _faceVerified ? AppTheme.success : AppTheme.textLight,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    _faceVerified ? Icons.check_circle_rounded : Icons.arrow_forward_ios_rounded,
+                    color: _faceVerified ? AppTheme.success : AppTheme.primary,
+                    size: _faceVerified ? 24 : 16,
+                  ),
+                ]),
               ),
             ),
+            const SizedBox(height: 6),
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.cloud_upload_rounded, size: 12, color: AppTheme.textLight),
+              const SizedBox(width: 4),
+              Text('Photo stored via Cloudinary',
+                  style: GoogleFonts.poppins(fontSize: 10, color: AppTheme.textLight)),
+            ]),
+
             const SizedBox(height: 24),
 
             Text('Sighting Location *',
-                style: GoogleFonts.poppins(
-                    fontSize: 14, fontWeight: FontWeight.w600)),
+                style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Row(children: [
               Expanded(
@@ -220,20 +268,15 @@ class _AddSightingScreenState extends State<AddSightingScreen> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: _fetchingLocation
-                      ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.my_location_rounded,
-                      color: AppTheme.primary),
+                      ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.my_location_rounded, color: AppTheme.primary),
                 ),
               ),
             ]),
             const SizedBox(height: 16),
 
             Text('Description *',
-                style: GoogleFonts.poppins(
-                    fontSize: 14, fontWeight: FontWeight.w600)),
+                style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             AppTextField(
               controller: _descCtrl,
@@ -244,7 +287,9 @@ class _AddSightingScreenState extends State<AddSightingScreen> {
             const SizedBox(height: 32),
 
             GradientButton(
-              label: _isLoading ? 'Submitting...' : 'Submit Sighting (+10 pts)',
+              label: _isLoading
+                  ? (_uploadingPhoto ? 'Uploading photo...' : 'Submitting...')
+                  : 'Submit Sighting (+10 pts)',
               icon: Icons.send_rounded,
               isLoading: _isLoading,
               onTap: _submit,

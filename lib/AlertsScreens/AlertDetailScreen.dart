@@ -1,10 +1,12 @@
-// lib/Alerts/AlertDetailScreen.dart
+// lib/AlertsScreens/AlertDetailScreen.dart
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../shared.dart';
 import '../../firebase_service.dart';
 import '../../app_models.dart';
+import '../face_verification_sheet.dart';
 import 'AddSightingScreen.dart';
 
 class AlertDetailScreen extends StatefulWidget {
@@ -20,6 +22,8 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
   late TabController _tabController;
   final _commentController = TextEditingController();
   bool _submittingComment = false;
+  // Store the latest alert so _startMarkAsFoundFlow always has fresh data
+  MissingAlert? _latestAlert;
 
   @override
   void initState() {
@@ -41,7 +45,6 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
     if (uid == null) return;
     final user = await FirebaseService.getUserProfile(uid);
     if (user == null) return;
-
     setState(() => _submittingComment = true);
     try {
       await FirebaseService.addComment(AlertComment(
@@ -58,42 +61,84 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
     }
   }
 
-  Future<void> _markAsFound(MissingAlert alert) async {
-    final confirm = await showDialog<bool>(
+  /// Uses the widget's own BuildContext (from build method) — always valid.
+  void _startMarkAsFoundFlow() {
+    final alert = _latestAlert;
+    if (alert == null) return;
+
+    // Use the Navigator context which is always alive for this route
+    showModalBottomSheet(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Mark as Found',
-            style: GoogleFonts.poppins(fontWeight: FontWeight.w700)),
-        content: Text(
-          'Are you sure ${alert.childName} has been found safely?',
-          style: GoogleFonts.poppins(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel', style: GoogleFonts.poppins()),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success),
-            child: Text('Yes, Found!',
-                style: GoogleFonts.poppins(color: Colors.white)),
-          ),
-        ],
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      isDismissible: false,
+      enableDrag: false,
+      builder: (_) => FaceVerificationSheet(
+        originalPhotoUrl: alert.childPhotoUrl,
+        childName: alert.childName,
+        actionLabel: 'Mark as Found',
+        onVerified: (File photo) async {
+          // Show confirmation dialog after face verified
+          if (!mounted) return;
+          final confirm = await showDialog<bool>(
+            context: context,
+            builder: (_) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+              title: Text('Mark as Found',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.w700)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(photo,
+                        height: 120, width: 120, fit: BoxFit.cover),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Face verified ✅\nAre you sure ${alert.childName} has been found safely?',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text('Cancel', style: GoogleFonts.poppins()),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.success),
+                  child: Text('Yes, Found!',
+                      style: GoogleFonts.poppins(color: Colors.white)),
+                ),
+              ],
+            ),
+          );
+          if (confirm == true) await _doMarkAsFound(alert, photo);
+        },
+        onCancelled: () {},
       ),
     );
-    if (confirm == true) {
+  }
+
+  Future<void> _doMarkAsFound(MissingAlert alert, File verifiedPhoto) async {
+    try {
+      final photoUrl =
+      await FirebaseService.uploadImage(verifiedPhoto, 'found_confirmations');
       await FirebaseService.updateAlertStatus(
         alert.id,
         'found',
         resolvedBy: FirebaseService.currentUid,
+        foundPhotoUrl: photoUrl,
       );
       if (alert.childId.isNotEmpty) {
         await FirebaseService.updateChildProfile(
             alert.childId, {'status': 'safe'});
       }
-      // Award points
       if (FirebaseService.currentUid != null) {
         await FirebaseService.addPoints(FirebaseService.currentUid!, 50);
       }
@@ -103,6 +148,14 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
             content: Text('Child marked as found! +50 points awarded.'),
             backgroundColor: AppTheme.success,
           ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: AppTheme.danger),
         );
       }
     }
@@ -119,6 +172,9 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
       d.exists ? MissingAlert.fromMap(d.id, d.data()!) : null),
       builder: (context, snap) {
         final alert = snap.data;
+        // Keep _latestAlert updated so _startMarkAsFoundFlow always has data
+        if (alert != null) _latestAlert = alert;
+
         if (alert == null) {
           return Scaffold(
             appBar: AppBar(title: const Text('Alert')),
@@ -148,7 +204,12 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
                     children: [
                       alert.childPhotoUrl != null
                           ? Image.network(alert.childPhotoUrl!,
-                          fit: BoxFit.cover)
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: AppTheme.primary.withOpacity(0.2),
+                            child: const Icon(Icons.child_care,
+                                size: 100, color: AppTheme.primary),
+                          ))
                           : Container(
                         color: AppTheme.primary.withOpacity(0.2),
                         child: const Icon(Icons.child_care,
@@ -161,7 +222,7 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
                             end: Alignment.bottomCenter,
                             colors: [
                               Colors.transparent,
-                              Colors.black.withOpacity(0.7),
+                              Colors.black.withOpacity(0.7)
                             ],
                           ),
                         ),
@@ -181,18 +242,15 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
                                       color: Colors.white70, fontSize: 12)),
                             ]),
                             const SizedBox(height: 8),
+                            Text(alert.childName,
+                                style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w800)),
                             Text(
-                              alert.childName,
-                              style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w800),
-                            ),
-                            Text(
-                              'Age ${alert.childAge} • ${alert.lastSeenLocation}',
-                              style: GoogleFonts.poppins(
-                                  color: Colors.white70, fontSize: 14),
-                            ),
+                                'Age ${alert.childAge} • ${alert.lastSeenLocation}',
+                                style: GoogleFonts.poppins(
+                                    color: Colors.white70, fontSize: 14)),
                           ],
                         ),
                       ),
@@ -215,7 +273,11 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
             body: TabBarView(
               controller: _tabController,
               children: [
-                _DetailsTab(alert: alert, onMarkFound: () => _markAsFound(alert)),
+                // Pass _startMarkAsFoundFlow directly — uses State context
+                _DetailsTab(
+                  alert: alert,
+                  onMarkFound: _startMarkAsFoundFlow,
+                ),
                 _SightingsTab(alertId: alert.id),
                 _CommentsTab(
                   alertId: alert.id,
@@ -228,16 +290,22 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
           ),
           floatingActionButton: alert.status == 'active'
               ? FloatingActionButton.extended(
+            // No Hero tag to avoid duplicate Hero crash
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => AddSightingScreen(alertId: alert.id),
+                builder: (_) => AddSightingScreen(
+                  alertId: alert.id,
+                  childName: alert.childName,
+                  childPhotoUrl: alert.childPhotoUrl,
+                ),
               ),
             ),
             backgroundColor: AppTheme.warning,
             icon: const Icon(Icons.visibility_rounded),
             label: Text('Report Sighting',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                style:
+                GoogleFonts.poppins(fontWeight: FontWeight.w600)),
           )
               : null,
         );
@@ -246,10 +314,10 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
   }
 }
 
+// ─── DETAILS TAB ──────────────────────────────────────────────────────────────
 class _DetailsTab extends StatelessWidget {
   final MissingAlert alert;
   final VoidCallback onMarkFound;
-
   const _DetailsTab({required this.alert, required this.onMarkFound});
 
   Widget _infoRow(String label, String value, IconData icon) {
@@ -295,14 +363,42 @@ class _DetailsTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (alert.status == 'active') ...[
-            DangerButton(
-              label: 'Mark as Found',
-              icon: Icons.check_circle_rounded,
-              onTap: onMarkFound,
-              colors: [AppTheme.success, const Color(0xFF059669)],
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.success.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(16),
+                border:
+                Border.all(color: AppTheme.success.withOpacity(0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    const Icon(Icons.face_retouching_natural_rounded,
+                        color: AppTheme.success, size: 20),
+                    const SizedBox(width: 8),
+                    Text('Face Verification Required',
+                        style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.success,
+                            fontSize: 14)),
+                  ]),
+                  const SizedBox(height: 4),
+                  Text(
+                    'You will be asked to take a photo and ML Kit will confirm it matches the child before marking as found.',
+                    style: GoogleFonts.poppins(
+                        fontSize: 12, color: AppTheme.textMid),
+                  ),
+                  const SizedBox(height: 14),
+                  _FoundButton(onTap: onMarkFound),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
           ],
+
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -320,14 +416,16 @@ class _DetailsTab extends StatelessWidget {
                     style: GoogleFonts.poppins(
                         fontSize: 16, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 16),
-                _infoRow('Full Name', alert.childName, Icons.person_rounded),
                 _infoRow(
-                    'Age', '${alert.childAge} years old', Icons.cake_rounded),
+                    'Full Name', alert.childName, Icons.person_rounded),
+                _infoRow('Age', '${alert.childAge} years old',
+                    Icons.cake_rounded),
                 _infoRow('Last Seen', alert.lastSeenLocation,
                     Icons.location_on_rounded),
                 _infoRow('Reported By', alert.reporterName,
                     Icons.account_circle_rounded),
-                _infoRow('Reported', alert.timeAgo, Icons.access_time_rounded),
+                _infoRow(
+                    'Reported', alert.timeAgo, Icons.access_time_rounded),
                 _infoRow('Sightings', '${alert.sightingCount} reported',
                     Icons.visibility_rounded),
                 if (alert.clothingDescription.isNotEmpty)
@@ -339,6 +437,7 @@ class _DetailsTab extends StatelessWidget {
               ],
             ),
           ),
+
           if (alert.status == 'found' && alert.foundAt != null) ...[
             const SizedBox(height: 16),
             Container(
@@ -346,7 +445,8 @@ class _DetailsTab extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppTheme.success.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.success.withOpacity(0.3)),
+                border:
+                Border.all(color: AppTheme.success.withOpacity(0.3)),
               ),
               child: Row(children: [
                 const Icon(Icons.check_circle_rounded,
@@ -362,9 +462,10 @@ class _DetailsTab extends StatelessWidget {
                               fontWeight: FontWeight.w700,
                               color: AppTheme.success)),
                       Text(
-                          'Resolved on ${alert.foundAt!.day}/${alert.foundAt!.month}/${alert.foundAt!.year}',
-                          style: GoogleFonts.poppins(
-                              fontSize: 13, color: AppTheme.textMid)),
+                        'Resolved on ${alert.foundAt!.day}/${alert.foundAt!.month}/${alert.foundAt!.year}',
+                        style: GoogleFonts.poppins(
+                            fontSize: 13, color: AppTheme.textMid),
+                      ),
                     ],
                   ),
                 ),
@@ -377,6 +478,36 @@ class _DetailsTab extends StatelessWidget {
   }
 }
 
+// Simple button widget — no Hero, no external dependencies
+class _FoundButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _FoundButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton.icon(
+        onPressed: onTap,
+        icon: const Icon(Icons.check_circle_rounded, color: Colors.white),
+        label: Text('Mark as Found',
+            style: GoogleFonts.poppins(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Colors.white)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.success,
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          elevation: 0,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── SIGHTINGS TAB ────────────────────────────────────────────────────────────
 class _SightingsTab extends StatelessWidget {
   final String alertId;
   const _SightingsTab({required this.alertId});
@@ -407,7 +538,8 @@ class _SightingsTab extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withOpacity(0.05), blurRadius: 8)
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 8)
                 ],
               ),
               child: Column(
@@ -416,7 +548,8 @@ class _SightingsTab extends StatelessWidget {
                   Row(children: [
                     CircleAvatar(
                       radius: 18,
-                      backgroundColor: AppTheme.primary.withOpacity(0.1),
+                      backgroundColor:
+                      AppTheme.primary.withOpacity(0.1),
                       child: Text(
                         s.reporterName.isNotEmpty
                             ? s.reporterName[0].toUpperCase()
@@ -433,11 +566,13 @@ class _SightingsTab extends StatelessWidget {
                         children: [
                           Text(s.reporterName,
                               style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.w600, fontSize: 14)),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14)),
                           Text(
                             '${s.reportedAt.day}/${s.reportedAt.month}/${s.reportedAt.year} ${s.reportedAt.hour}:${s.reportedAt.minute.toString().padLeft(2, '0')}',
                             style: GoogleFonts.poppins(
-                                fontSize: 12, color: AppTheme.textLight),
+                                fontSize: 12,
+                                color: AppTheme.textLight),
                           ),
                         ],
                       ),
@@ -481,7 +616,8 @@ class _SightingsTab extends StatelessWidget {
                       child: Image.network(s.photoUrl!,
                           height: 150,
                           width: double.infinity,
-                          fit: BoxFit.cover),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const SizedBox()),
                     ),
                   ],
                 ],
@@ -494,6 +630,7 @@ class _SightingsTab extends StatelessWidget {
   }
 }
 
+// ─── COMMENTS TAB ─────────────────────────────────────────────────────────────
 class _CommentsTab extends StatelessWidget {
   final String alertId;
   final TextEditingController controller;
@@ -540,7 +677,8 @@ class _CommentsTab extends StatelessWidget {
                       children: [
                         CircleAvatar(
                           radius: 18,
-                          backgroundColor: AppTheme.primary.withOpacity(0.1),
+                          backgroundColor:
+                          AppTheme.primary.withOpacity(0.1),
                           child: Text(
                             c.authorName.isNotEmpty
                                 ? c.authorName[0].toUpperCase()
@@ -564,13 +702,15 @@ class _CommentsTab extends StatelessWidget {
                                 Text(
                                   '${c.createdAt.hour}:${c.createdAt.minute.toString().padLeft(2, '0')}',
                                   style: GoogleFonts.poppins(
-                                      fontSize: 11, color: AppTheme.textLight),
+                                      fontSize: 11,
+                                      color: AppTheme.textLight),
                                 ),
                               ]),
                               const SizedBox(height: 4),
                               Text(c.text,
                                   style: GoogleFonts.poppins(
-                                      fontSize: 14, color: AppTheme.textDark)),
+                                      fontSize: 14,
+                                      color: AppTheme.textDark)),
                             ],
                           ),
                         ),
@@ -639,81 +779,6 @@ class _CommentsTab extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-extension DangerButtonExtension on DangerButton {
-  // Already has colors param — this is just a placeholder
-}
-
-// Override DangerButton to support custom colors for the "found" button
-class DangerButton extends StatelessWidget {
-  final String label;
-  final VoidCallback? onTap;
-  final IconData? icon;
-  final bool isLoading;
-  final List<Color>? colors;
-
-  const DangerButton({
-    super.key,
-    required this.label,
-    this.onTap,
-    this.icon,
-    this.isLoading = false,
-    this.colors,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      height: 56,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: colors ?? [const Color(0xFFEF4444), const Color(0xFFDC2626)],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: (colors?.first ?? AppTheme.danger).withOpacity(0.3),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          )
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: isLoading ? null : onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Center(
-            child: isLoading
-                ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                    color: Colors.white, strokeWidth: 2.5))
-                : Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (icon != null) ...[
-                  Icon(icon, color: Colors.white, size: 22),
-                  const SizedBox(width: 8),
-                ],
-                Text(
-                  label,
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

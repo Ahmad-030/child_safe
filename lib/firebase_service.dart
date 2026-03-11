@@ -1,17 +1,21 @@
 // lib/firebase_service.dart
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:http/http.dart' as http;
 import 'app_models.dart';
 
 class FirebaseService {
   static final FirebaseFirestore db = FirebaseFirestore.instance;
   static final FirebaseAuth auth = FirebaseAuth.instance;
-  static final FirebaseStorage storage = FirebaseStorage.instance;
   static final FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+  // ─── CLOUDINARY CONFIG ─────────────────────────────────────────────────────
+  static const String _cloudinaryCloudName = 'dyl2toyfl';
+  static const String _cloudinaryUploadPreset = 'Child_safety';
 
   // ─── AUTH ──────────────────────────────────────────────────────────────────
   static User? get currentUser => auth.currentUser;
@@ -91,8 +95,6 @@ class FirebaseService {
     });
   }
 
-  /// Call this every time child location is updated — checks geofence and
-  /// records an event + notifies parent if child exits safe zone.
   static Future<void> checkGeofenceAndNotify({
     required ChildProfile child,
     required double lat,
@@ -109,7 +111,6 @@ class FirebaseService {
 
     final isOutside = distanceMeters > child.safeZoneRadius;
     if (isOutside) {
-      // Log geofence exit event
       await db.collection('geofence_events').add(GeofenceEvent(
         id: '',
         childId: child.id,
@@ -121,7 +122,6 @@ class FirebaseService {
         timestamp: DateTime.now(),
       ).toMap());
 
-      // Create in-app notification for parent
       await saveNotification(AppNotification(
         id: '',
         recipientUid: child.parentUid,
@@ -145,10 +145,9 @@ class FirebaseService {
           .map((s) =>
           s.docs.map((d) => GeofenceEvent.fromMap(d.id, d.data())).toList());
 
-  /// Haversine formula — returns distance in meters between two GPS coordinates
   static double _haversineDistance(
       double lat1, double lon1, double lat2, double lon2) {
-    const R = 6371000.0; // Earth radius in metres
+    const R = 6371000.0;
     final phi1 = lat1 * pi / 180;
     final phi2 = lat2 * pi / 180;
     final dPhi = (lat2 - lat1) * pi / 180;
@@ -165,7 +164,6 @@ class FirebaseService {
     if (alert.childId.isNotEmpty) {
       await updateChildProfile(alert.childId, {'status': 'missing'});
     }
-    // Notify all users
     await _notifyAllUsers(
       title: '🚨 Missing Child Alert — ${alert.childName}',
       body:
@@ -176,7 +174,6 @@ class FirebaseService {
     return ref.id;
   }
 
-  /// Emergency alert — no login required, saves directly to Firebase
   static Future<String> createEmergencyAlert(MissingAlert alert) async {
     final ref = await db.collection('missing_alerts').add({
       ...alert.toMap(),
@@ -194,7 +191,7 @@ class FirebaseService {
   }
 
   static Future<void> updateAlertStatus(String alertId, String status,
-      {String? resolvedBy}) async {
+      {String? resolvedBy, required String foundPhotoUrl}) async {
     final data = <String, dynamic>{
       'status': status,
       'updatedAt': FieldValue.serverTimestamp(),
@@ -288,7 +285,6 @@ class FirebaseService {
           .map((s) => s.docs.map((d) => d.data()).toList());
 
   // ─── CHILD SOS ─────────────────────────────────────────────────────────────
-  /// Child triggers SOS — notifies parent immediately
   static Future<void> triggerChildSOS({
     required String childId,
     required String childName,
@@ -296,7 +292,6 @@ class FirebaseService {
     required double lat,
     required double lng,
   }) async {
-    // Save SOS event
     await db.collection('sos_events').add({
       'childId': childId,
       'childName': childName,
@@ -307,13 +302,12 @@ class FirebaseService {
       'resolved': false,
     });
 
-    // Notify parent
     await saveNotification(AppNotification(
       id: '',
       recipientUid: parentUid,
-      title: '🆘 SOS from ${childName}!',
+      title: '🆘 SOS from $childName!',
       body:
-      '${childName} has triggered an SOS alert! Location: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}. Please respond immediately!',
+      '$childName has triggered an SOS alert! Location: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}. Please respond immediately!',
       type: 'sos',
       relatedId: childId,
       createdAt: DateTime.now(),
@@ -352,7 +346,6 @@ class FirebaseService {
   static Future<void> saveNotification(AppNotification notification) =>
       db.collection('notifications').add(notification.toMap());
 
-  /// Notifies all users — used when a new missing alert is created
   static Future<void> _notifyAllUsers({
     required String title,
     required String body,
@@ -411,11 +404,35 @@ class FirebaseService {
           .snapshots()
           .map((s) => s.docs.length);
 
-  // ─── IMAGE UPLOAD ──────────────────────────────────────────────────────────
-  static Future<String> uploadImage(File file, String path) async {
-    final ref = storage.ref().child(path);
-    final task = await ref.putFile(file);
-    return await task.ref.getDownloadURL();
+  // ─── IMAGE UPLOAD (CLOUDINARY) ─────────────────────────────────────────────
+  /// Uploads [file] to Cloudinary under [folder] and returns the secure URL.
+  /// The URL is then stored directly in Firestore (photoUrl fields).
+  static Future<String> uploadImage(File file, String folder) async {
+    final uri = Uri.parse(
+      'https://api.cloudinary.com/v1_1/$_cloudinaryCloudName/image/upload',
+    );
+
+    final request = http.MultipartRequest('POST', uri)
+      ..fields['upload_preset'] = _cloudinaryUploadPreset
+      ..fields['folder'] = folder
+      ..files.add(await http.MultipartFile.fromPath('file', file.path));
+
+    final streamedResponse = await request.send();
+
+    if (streamedResponse.statusCode != 200) {
+      throw Exception(
+          'Cloudinary upload failed with status: ${streamedResponse.statusCode}');
+    }
+
+    final responseBody = await streamedResponse.stream.bytesToString();
+    final json = jsonDecode(responseBody) as Map<String, dynamic>;
+
+    final secureUrl = json['secure_url'] as String?;
+    if (secureUrl == null || secureUrl.isEmpty) {
+      throw Exception('Cloudinary returned no URL. Response: $responseBody');
+    }
+
+    return secureUrl;
   }
 
   // ─── STATS ─────────────────────────────────────────────────────────────────

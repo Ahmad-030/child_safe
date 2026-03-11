@@ -1,5 +1,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.CAMERA"/>
+
+        <!-- Location permissions -->
+        <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+        <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+        <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+        <!-- Internet (needed for Firebase + Cloudinary) -->
+        <uses-permission android:name="android.permission.INTERNET" />
+
+        <!-- Camera & storage for image picker -->
+        <uses-permission android:name="android.permission.CAMERA" />
+        <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+
+
     <application
         android:label="child_safe"
         android:name="${applicationName}"

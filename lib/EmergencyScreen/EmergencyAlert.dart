@@ -25,6 +25,7 @@ class _EmergencyScreenState extends State<EmergencyScreen>
   File? _selectedImage;
   late AnimationController _fadeController;
   bool _isSubmitting = false;
+  bool _uploadingPhoto = false;
   bool _fetchingLocation = false;
   double? _lat, _lng;
 
@@ -150,7 +151,8 @@ class _EmergencyScreenState extends State<EmergencyScreen>
         decoration: BoxDecoration(
           color: const Color(0xFFEF4444).withOpacity(0.05),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.1)),
+          border:
+          Border.all(color: const Color(0xFFEF4444).withOpacity(0.1)),
         ),
         child: Row(children: [
           Container(
@@ -208,7 +210,6 @@ class _EmergencyScreenState extends State<EmergencyScreen>
     }
   }
 
-  // ── REAL SUBMISSION TO FIREBASE ──────────────────────────────────────────────
   Future<void> _submitReport() async {
     if (_nameController.text.isEmpty ||
         _ageController.text.isEmpty ||
@@ -226,8 +227,8 @@ class _EmergencyScreenState extends State<EmergencyScreen>
     if (_selectedImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-          Text('Please upload a photo of the child', style: GoogleFonts.poppins()),
+          content: Text('Please upload a photo of the child',
+              style: GoogleFonts.poppins()),
           backgroundColor: const Color(0xFFEF4444),
         ),
       );
@@ -237,14 +238,12 @@ class _EmergencyScreenState extends State<EmergencyScreen>
     setState(() => _isSubmitting = true);
 
     try {
-      // Upload photo
-      String? photoUrl;
-      photoUrl = await FirebaseService.uploadImage(
-        _selectedImage!,
-        'emergency/${DateTime.now().millisecondsSinceEpoch}.jpg',
-      );
+      // Upload to Cloudinary — secure URL then stored in Firestore
+      setState(() => _uploadingPhoto = true);
+      final photoUrl =
+      await FirebaseService.uploadImage(_selectedImage!, 'emergency');
+      setState(() => _uploadingPhoto = false);
 
-      // Build alert — emergency reports use a special anonymous reporter uid
       final uid = FirebaseService.currentUid ?? 'anonymous_emergency';
       final alert = MissingAlert(
         id: '',
@@ -270,9 +269,11 @@ class _EmergencyScreenState extends State<EmergencyScreen>
       if (mounted) _showSuccessDialog();
     } catch (e) {
       if (mounted) {
+        setState(() => _uploadingPhoto = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Submission failed: $e', style: GoogleFonts.poppins()),
+            content:
+            Text('Submission failed: $e', style: GoogleFonts.poppins()),
             backgroundColor: const Color(0xFFEF4444),
           ),
         );
@@ -288,7 +289,8 @@ class _EmergencyScreenState extends State<EmergencyScreen>
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         contentPadding: const EdgeInsets.all(28),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -310,7 +312,7 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                     color: const Color(0xFF0F172A))),
             const SizedBox(height: 12),
             Text(
-              'Your emergency report has been submitted to Firebase and all nearby volunteers have been notified. Authorities can now see this alert.',
+              'Your emergency report photo has been saved to Cloudinary and the alert is live in the database. All nearby volunteers have been notified.',
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
                   fontSize: 14,
@@ -425,52 +427,96 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                           // Photo upload
                           Center(
                             child: GestureDetector(
-                              onTap: _pickImage,
+                              onTap:
+                              _uploadingPhoto ? null : _pickImage,
                               child: Container(
                                 width: 160,
                                 height: 160,
                                 decoration: BoxDecoration(
                                   color: _selectedImage == null
-                                      ? const Color(0xFFEF4444).withOpacity(0.08)
+                                      ? const Color(0xFFEF4444)
+                                      .withOpacity(0.08)
                                       : Colors.grey.shade200,
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
-                                    color: const Color(0xFFEF4444).withOpacity(0.3),
+                                    color: const Color(0xFFEF4444)
+                                        .withOpacity(0.3),
                                     width: 2,
                                   ),
                                 ),
-                                child: _selectedImage == null
+                                child: _uploadingPhoto
+                                    ? const Center(
+                                  child: Column(
+                                    mainAxisAlignment:
+                                    MainAxisAlignment.center,
+                                    children: [
+                                      CircularProgressIndicator(
+                                          color: Color(0xFFEF4444),
+                                          strokeWidth: 2),
+                                      SizedBox(height: 10),
+                                      Text('Uploading to\nCloudinary...',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              color: Color(0xFFEF4444))),
+                                    ],
+                                  ),
+                                )
+                                    : _selectedImage == null
                                     ? Column(
                                   mainAxisAlignment:
                                   MainAxisAlignment.center,
                                   children: [
                                     const Icon(
-                                        Icons.add_photo_alternate_rounded,
+                                        Icons
+                                            .add_photo_alternate_rounded,
                                         color: Color(0xFFEF4444),
                                         size: 48),
                                     const SizedBox(height: 12),
                                     Text('Upload Photo',
                                         style: GoogleFonts.poppins(
                                             fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            color:
-                                            const Color(0xFFEF4444))),
+                                            fontWeight:
+                                            FontWeight.w600,
+                                            color: const Color(
+                                                0xFFEF4444))),
                                     Text('Required',
                                         style: GoogleFonts.poppins(
                                             fontSize: 12,
-                                            color:
-                                            const Color(0xFF64748B))),
+                                            color: const Color(
+                                                0xFF64748B))),
                                   ],
                                 )
                                     : ClipRRect(
-                                  borderRadius: BorderRadius.circular(18),
-                                  child: Image.file(_selectedImage!,
+                                  borderRadius:
+                                  BorderRadius.circular(18),
+                                  child: Image.file(
+                                      _selectedImage!,
                                       fit: BoxFit.cover),
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 32),
+
+                          // Cloudinary badge
+                          const SizedBox(height: 8),
+                          Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.cloud_upload_rounded,
+                                    size: 13,
+                                    color: Color(0xFF64748B)),
+                                const SizedBox(width: 4),
+                                Text('Photo stored via Cloudinary',
+                                    style: GoogleFonts.poppins(
+                                        fontSize: 11,
+                                        color: const Color(0xFF64748B))),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 28),
 
                           _buildLabel("Child's Full Name *"),
                           const SizedBox(height: 8),
@@ -500,11 +546,13 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                             ),
                             const SizedBox(width: 8),
                             GestureDetector(
-                              onTap: _fetchingLocation ? null : _getLocation,
+                              onTap:
+                              _fetchingLocation ? null : _getLocation,
                               child: Container(
                                 padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFEF4444).withOpacity(0.1),
+                                  color: const Color(0xFFEF4444)
+                                      .withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                                 child: _fetchingLocation
@@ -546,7 +594,8 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                               color: const Color(0xFFFEF3C7),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                  color: const Color(0xFFF59E0B).withOpacity(0.3)),
+                                  color: const Color(0xFFF59E0B)
+                                      .withOpacity(0.3)),
                             ),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -556,7 +605,7 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
-                                    'This report will be IMMEDIATELY saved to our database and all registered volunteers in the area will be notified.',
+                                    'Photo will be uploaded to Cloudinary. The alert and photo URL will be saved in Firestore and all registered volunteers will be notified instantly.',
                                     style: GoogleFonts.poppins(
                                         fontSize: 13,
                                         color: const Color(0xFF92400E),
@@ -574,14 +623,14 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                             height: 60,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(18),
-                              gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFFEF4444),
-                                    Color(0xFFDC2626)
-                                  ]),
+                              gradient: const LinearGradient(colors: [
+                                Color(0xFFEF4444),
+                                Color(0xFFDC2626)
+                              ]),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFFEF4444).withOpacity(0.3),
+                                  color: const Color(0xFFEF4444)
+                                      .withOpacity(0.3),
                                   blurRadius: 20,
                                   offset: const Offset(0, 8),
                                 ),
@@ -590,25 +639,32 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                             child: Material(
                               color: Colors.transparent,
                               child: InkWell(
-                                onTap: _isSubmitting ? null : _submitReport,
+                                onTap: _isSubmitting
+                                    ? null
+                                    : _submitReport,
                                 borderRadius: BorderRadius.circular(18),
                                 child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisAlignment:
+                                  MainAxisAlignment.center,
                                   children: [
                                     if (_isSubmitting)
                                       const SizedBox(
                                         width: 24,
                                         height: 24,
                                         child: CircularProgressIndicator(
-                                            color: Colors.white, strokeWidth: 2.5),
+                                            color: Colors.white,
+                                            strokeWidth: 2.5),
                                       )
                                     else ...[
                                       const Icon(Icons.send_rounded,
                                           color: Colors.white, size: 24),
                                       const SizedBox(width: 12),
-                                      Text('Submit Report to Database',
+                                      Text(
+                                          _uploadingPhoto
+                                              ? 'Uploading to Cloudinary...'
+                                              : 'Submit Report to Database',
                                           style: GoogleFonts.poppins(
-                                              fontSize: 17,
+                                              fontSize: 16,
                                               fontWeight: FontWeight.w700,
                                               color: Colors.white)),
                                     ],
@@ -677,15 +733,16 @@ class _EmergencyScreenState extends State<EmergencyScreen>
         controller: controller,
         keyboardType: keyboardType,
         maxLines: maxLines,
-        style: GoogleFonts.poppins(fontSize: 15, color: const Color(0xFF0F172A)),
+        style: GoogleFonts.poppins(
+            fontSize: 15, color: const Color(0xFF0F172A)),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle:
-          GoogleFonts.poppins(fontSize: 15, color: const Color(0xFF94A3B8)),
+          hintStyle: GoogleFonts.poppins(
+              fontSize: 15, color: const Color(0xFF94A3B8)),
           prefixIcon: Icon(icon, color: const Color(0xFFEF4444)),
           border: InputBorder.none,
-          contentPadding:
-          EdgeInsets.symmetric(horizontal: 20, vertical: maxLines > 1 ? 18 : 18),
+          contentPadding: EdgeInsets.symmetric(
+              horizontal: 20, vertical: maxLines > 1 ? 18 : 18),
         ),
       ),
     );
