@@ -202,19 +202,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
 
             // Cloudinary badge
             const SizedBox(height: 8),
-            Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.cloud_upload_rounded,
-                      size: 12, color: AppTheme.textLight),
-                  const SizedBox(width: 4),
-                  Text('Photo stored via Cloudinary',
-                      style: GoogleFonts.poppins(
-                          fontSize: 10, color: AppTheme.textLight)),
-                ],
-              ),
-            ),
+
 
             const SizedBox(height: 28),
 

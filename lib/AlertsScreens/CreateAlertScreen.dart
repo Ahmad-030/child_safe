@@ -222,9 +222,7 @@ class _CreateAlertScreenState extends State<CreateAlertScreen> {
                   const Icon(Icons.cloud_upload_rounded,
                       size: 12, color: AppTheme.textLight),
                   const SizedBox(width: 4),
-                  Text('Stored via Cloudinary',
-                      style: GoogleFonts.poppins(
-                          fontSize: 10, color: AppTheme.textLight)),
+
                 ],
               ),
             ),

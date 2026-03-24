@@ -14,12 +14,12 @@ class FirebaseService {
   static final FirebaseMessaging messaging = FirebaseMessaging.instance;
 
   // ─── CLOUDINARY CONFIG ─────────────────────────────────────────────────────
-  static const String _cloudinaryCloudName = 'dyl2toyfl';
+  static const String _cloudinaryCloudName  = 'dyl2toyfl';
   static const String _cloudinaryUploadPreset = 'Child_safety';
 
   // ─── AUTH ──────────────────────────────────────────────────────────────────
-  static User? get currentUser => auth.currentUser;
-  static String? get currentUid => auth.currentUser?.uid;
+  static User?   get currentUser => auth.currentUser;
+  static String? get currentUid  => auth.currentUser?.uid;
 
   static Future<UserCredential> signIn(String email, String password) =>
       auth.signInWithEmailAndPassword(email: email, password: password);
@@ -42,8 +42,7 @@ class FirebaseService {
     return AppUser.fromMap(uid, doc.data()!);
   }
 
-  static Future<void> updateUserProfile(
-      String uid, Map<String, dynamic> data) =>
+  static Future<void> updateUserProfile(String uid, Map<String, dynamic> data) =>
       db.collection('users').doc(uid).update(data);
 
   static Stream<AppUser?> userStream(String uid) =>
@@ -56,8 +55,7 @@ class FirebaseService {
     return ref.id;
   }
 
-  static Future<void> updateChildProfile(
-      String id, Map<String, dynamic> data) =>
+  static Future<void> updateChildProfile(String id, Map<String, dynamic> data) =>
       db.collection('children').doc(id).update(data);
 
   static Future<void> deleteChildProfile(String id) =>
@@ -79,21 +77,19 @@ class FirebaseService {
 
   // ─── SAFE ZONE / GEOFENCE ──────────────────────────────────────────────────
   static Future<void> setSafeZone(
-      String childId, double lat, double lng, double radiusMeters) {
-    return db.collection('children').doc(childId).update({
-      'safeZoneLat': lat,
-      'safeZoneLng': lng,
-      'safeZoneRadius': radiusMeters,
-    });
-  }
+      String childId, double lat, double lng, double radiusMeters) =>
+      db.collection('children').doc(childId).update({
+        'safeZoneLat': lat,
+        'safeZoneLng': lng,
+        'safeZoneRadius': radiusMeters,
+      });
 
-  static Future<void> clearSafeZone(String childId) {
-    return db.collection('children').doc(childId).update({
-      'safeZoneLat': FieldValue.delete(),
-      'safeZoneLng': FieldValue.delete(),
-      'safeZoneRadius': 500,
-    });
-  }
+  static Future<void> clearSafeZone(String childId) =>
+      db.collection('children').doc(childId).update({
+        'safeZoneLat': FieldValue.delete(),
+        'safeZoneLng': FieldValue.delete(),
+        'safeZoneRadius': 500,
+      });
 
   static Future<void> checkGeofenceAndNotify({
     required ChildProfile child,
@@ -101,16 +97,9 @@ class FirebaseService {
     required double lng,
   }) async {
     if (!child.hasSafeZone) return;
-
     final distanceMeters = _haversineDistance(
-      child.safeZoneLat!,
-      child.safeZoneLng!,
-      lat,
-      lng,
-    );
-
-    final isOutside = distanceMeters > child.safeZoneRadius;
-    if (isOutside) {
+        child.safeZoneLat!, child.safeZoneLng!, lat, lng);
+    if (distanceMeters > child.safeZoneRadius) {
       await db.collection('geofence_events').add(GeofenceEvent(
         id: '',
         childId: child.id,
@@ -121,13 +110,12 @@ class FirebaseService {
         lng: lng,
         timestamp: DateTime.now(),
       ).toMap());
-
       await saveNotification(AppNotification(
         id: '',
         recipientUid: child.parentUid,
         title: '⚠️ Safe Zone Alert — ${child.name}',
-        body:
-        '${child.name} has left the designated safe zone! Current location: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
+        body: '${child.name} has left the safe zone! '
+            'Location: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
         type: 'geofence',
         relatedId: child.id,
         createdAt: DateTime.now(),
@@ -154,11 +142,12 @@ class FirebaseService {
     final dLam = (lon2 - lon1) * pi / 180;
     final a = sin(dPhi / 2) * sin(dPhi / 2) +
         cos(phi1) * cos(phi2) * sin(dLam / 2) * sin(dLam / 2);
-    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    return R * c;
+    return R * 2 * atan2(sqrt(a), sqrt(1 - a));
   }
 
   // ─── MISSING ALERTS ────────────────────────────────────────────────────────
+
+  /// Creates a missing alert and notifies ALL registered users.
   static Future<String> createMissingAlert(MissingAlert alert) async {
     final ref = await db.collection('missing_alerts').add(alert.toMap());
     if (alert.childId.isNotEmpty) {
@@ -166,8 +155,8 @@ class FirebaseService {
     }
     await _notifyAllUsers(
       title: '🚨 Missing Child Alert — ${alert.childName}',
-      body:
-      'Age ${alert.childAge} last seen at ${alert.lastSeenLocation}. Tap to view details.',
+      body: 'Age ${alert.childAge} last seen at ${alert.lastSeenLocation}. '
+          'Tap to view details.',
       type: 'alert',
       relatedId: ref.id,
     );
@@ -182,25 +171,36 @@ class FirebaseService {
     });
     await _notifyAllUsers(
       title: '🆘 EMERGENCY — Missing Child: ${alert.childName}',
-      body:
-      'Emergency report filed. Age ${alert.childAge}, last seen: ${alert.lastSeenLocation}',
+      body: 'Emergency report filed. Age ${alert.childAge}, '
+          'last seen: ${alert.lastSeenLocation}',
       type: 'alert',
       relatedId: ref.id,
     );
     return ref.id;
   }
 
-  static Future<void> updateAlertStatus(String alertId, String status,
-      {String? resolvedBy, required String foundPhotoUrl}) async {
+  static Future<void> updateAlertStatus(
+      String alertId,
+      String status, {
+        String? resolvedBy,
+        required String foundPhotoUrl,
+      }) async {
     final data = <String, dynamic>{
       'status': status,
       'updatedAt': FieldValue.serverTimestamp(),
     };
     if (resolvedBy != null) data['resolvedBy'] = resolvedBy;
-    if (status == 'found') data['foundAt'] = FieldValue.serverTimestamp();
+    if (status == 'found') {
+      data['foundAt'] = FieldValue.serverTimestamp();
+      if (foundPhotoUrl.isNotEmpty) data['foundPhotoUrl'] = foundPhotoUrl;
+    }
     await db.collection('missing_alerts').doc(alertId).update(data);
   }
 
+  // ── Streams visible to ALL users (no uid filter) ───────────────────────────
+
+  /// Active alerts — real-time, all users.
+  /// Requires Firestore index: status ASC + reportedAt DESC
   static Stream<List<MissingAlert>> activeMissingAlertsStream() =>
       db
           .collection('missing_alerts')
@@ -210,6 +210,7 @@ class FirebaseService {
           .map((s) =>
           s.docs.map((d) => MissingAlert.fromMap(d.id, d.data())).toList());
 
+  /// All alerts sorted newest first — real-time, all users.
   static Stream<List<MissingAlert>> allAlertsStream() =>
       db
           .collection('missing_alerts')
@@ -218,6 +219,7 @@ class FirebaseService {
           .map((s) =>
           s.docs.map((d) => MissingAlert.fromMap(d.id, d.data())).toList());
 
+  /// My alerts (filtered by reporter uid).
   static Stream<List<MissingAlert>> myAlertsStream(String parentUid) =>
       db
           .collection('missing_alerts')
@@ -236,9 +238,10 @@ class FirebaseService {
   // ─── SIGHTINGS ─────────────────────────────────────────────────────────────
   static Future<void> addSighting(Sighting sighting) async {
     await db.collection('sightings').add(sighting.toMap());
-    await db.collection('missing_alerts').doc(sighting.alertId).update({
-      'sightingCount': FieldValue.increment(1),
-    });
+    await db
+        .collection('missing_alerts')
+        .doc(sighting.alertId)
+        .update({'sightingCount': FieldValue.increment(1)});
     await addPoints(sighting.reportedBy, 10);
   }
 
@@ -262,8 +265,12 @@ class FirebaseService {
       });
 
   static Stream<LocationUpdate?> childLocationStream(String childId) =>
-      db.collection('child_locations').doc(childId).snapshots().map(
-              (doc) => doc.exists ? LocationUpdate.fromMap(doc.data()!) : null);
+      db
+          .collection('child_locations')
+          .doc(childId)
+          .snapshots()
+          .map((doc) =>
+      doc.exists ? LocationUpdate.fromMap(doc.data()!) : null);
 
   static Future<void> addLocationHistory(
       String childId, double lat, double lng) =>
@@ -301,13 +308,13 @@ class FirebaseService {
       'timestamp': FieldValue.serverTimestamp(),
       'resolved': false,
     });
-
     await saveNotification(AppNotification(
       id: '',
       recipientUid: parentUid,
       title: '🆘 SOS from $childName!',
-      body:
-      '$childName has triggered an SOS alert! Location: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}. Please respond immediately!',
+      body: '$childName has triggered an SOS! '
+          'Location: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}. '
+          'Please respond immediately!',
       type: 'sos',
       relatedId: childId,
       createdAt: DateTime.now(),
@@ -339,13 +346,15 @@ class FirebaseService {
           .where('alertId', isEqualTo: alertId)
           .orderBy('createdAt', descending: false)
           .snapshots()
-          .map((s) =>
-          s.docs.map((d) => AlertComment.fromMap(d.id, d.data())).toList());
+          .map((s) => s.docs
+          .map((d) => AlertComment.fromMap(d.id, d.data()))
+          .toList());
 
   // ─── NOTIFICATIONS ─────────────────────────────────────────────────────────
   static Future<void> saveNotification(AppNotification notification) =>
       db.collection('notifications').add(notification.toMap());
 
+  /// Writes a notification document for every registered user.
   static Future<void> _notifyAllUsers({
     required String title,
     required String body,
@@ -384,12 +393,12 @@ class FirebaseService {
       db.collection('notifications').doc(notifId).update({'read': true});
 
   static Future<void> markAllNotificationsRead(String uid) async {
-    final batch = db.batch();
     final snap = await db
         .collection('notifications')
         .where('recipientUid', isEqualTo: uid)
         .where('read', isEqualTo: false)
         .get();
+    final batch = db.batch();
     for (final doc in snap.docs) {
       batch.update(doc.reference, {'read': true});
     }
@@ -405,54 +414,39 @@ class FirebaseService {
           .map((s) => s.docs.length);
 
   // ─── IMAGE UPLOAD (CLOUDINARY) ─────────────────────────────────────────────
-  /// Uploads [file] to Cloudinary under [folder] and returns the secure URL.
-  /// The URL is then stored directly in Firestore (photoUrl fields).
   static Future<String> uploadImage(File file, String folder) async {
     final uri = Uri.parse(
       'https://api.cloudinary.com/v1_1/$_cloudinaryCloudName/image/upload',
     );
-
     final request = http.MultipartRequest('POST', uri)
       ..fields['upload_preset'] = _cloudinaryUploadPreset
       ..fields['folder'] = folder
       ..files.add(await http.MultipartFile.fromPath('file', file.path));
 
-    final streamedResponse = await request.send();
-
-    if (streamedResponse.statusCode != 200) {
+    final streamed = await request.send();
+    if (streamed.statusCode != 200) {
       throw Exception(
-          'Cloudinary upload failed with status: ${streamedResponse.statusCode}');
+          'Cloudinary upload failed (${streamed.statusCode})');
     }
-
-    final responseBody = await streamedResponse.stream.bytesToString();
-    final json = jsonDecode(responseBody) as Map<String, dynamic>;
-
-    final secureUrl = json['secure_url'] as String?;
-    if (secureUrl == null || secureUrl.isEmpty) {
-      throw Exception('Cloudinary returned no URL. Response: $responseBody');
+    final body = await streamed.stream.bytesToString();
+    final json = jsonDecode(body) as Map<String, dynamic>;
+    final url  = json['secure_url'] as String?;
+    if (url == null || url.isEmpty) {
+      throw Exception('Cloudinary returned no URL. Response: $body');
     }
-
-    return secureUrl;
+    return url;
   }
 
   // ─── STATS ─────────────────────────────────────────────────────────────────
   static Future<Map<String, int>> getStats() async {
-    final active = await db
-        .collection('missing_alerts')
-        .where('status', isEqualTo: 'active')
-        .count()
-        .get();
-    final found = await db
-        .collection('missing_alerts')
-        .where('status', isEqualTo: 'found')
-        .count()
-        .get();
-    final users = await db.collection('users').count().get();
+    final active   = await db.collection('missing_alerts').where('status', isEqualTo: 'active').count().get();
+    final found    = await db.collection('missing_alerts').where('status', isEqualTo: 'found').count().get();
+    final users    = await db.collection('users').count().get();
     final children = await db.collection('children').count().get();
     return {
-      'active': active.count ?? 0,
-      'found': found.count ?? 0,
-      'users': users.count ?? 0,
+      'active':   active.count   ?? 0,
+      'found':    found.count    ?? 0,
+      'users':    users.count    ?? 0,
       'children': children.count ?? 0,
     };
   }

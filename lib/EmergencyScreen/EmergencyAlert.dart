@@ -310,15 +310,7 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF0F172A))),
-            const SizedBox(height: 12),
-            Text(
-              'Your emergency report photo has been saved to Cloudinary and the alert is live in the database. All nearby volunteers have been notified.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: const Color(0xFF64748B),
-                  height: 1.6),
-            ),
+
             const SizedBox(height: 28),
             Container(
               width: double.infinity,
@@ -454,11 +446,7 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                                           color: Color(0xFFEF4444),
                                           strokeWidth: 2),
                                       SizedBox(height: 10),
-                                      Text('Uploading to\nCloudinary...',
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              color: Color(0xFFEF4444))),
+
                                     ],
                                   ),
                                 )
@@ -508,10 +496,7 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                                     size: 13,
                                     color: Color(0xFF64748B)),
                                 const SizedBox(width: 4),
-                                Text('Photo stored via Cloudinary',
-                                    style: GoogleFonts.poppins(
-                                        fontSize: 11,
-                                        color: const Color(0xFF64748B))),
+
                               ],
                             ),
                           ),
@@ -588,33 +573,6 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                           const SizedBox(height: 24),
 
                           // Notice
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFEF3C7),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                  color: const Color(0xFFF59E0B)
-                                      .withOpacity(0.3)),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Icon(Icons.info_rounded,
-                                    color: Color(0xFFF59E0B), size: 24),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    'Photo will be uploaded to Cloudinary. The alert and photo URL will be saved in Firestore and all registered volunteers will be notified instantly.',
-                                    style: GoogleFonts.poppins(
-                                        fontSize: 13,
-                                        color: const Color(0xFF92400E),
-                                        height: 1.5),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
                           const SizedBox(height: 32),
 
                           // Submit button
@@ -659,14 +617,7 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                                       const Icon(Icons.send_rounded,
                                           color: Colors.white, size: 24),
                                       const SizedBox(width: 12),
-                                      Text(
-                                          _uploadingPhoto
-                                              ? 'Uploading to Cloudinary...'
-                                              : 'Submit Report to Database',
-                                          style: GoogleFonts.poppins(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.white)),
+
                                     ],
                                   ],
                                 ),
