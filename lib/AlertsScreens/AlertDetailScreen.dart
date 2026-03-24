@@ -66,7 +66,6 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
     final alert = _latestAlert;
     if (alert == null) return;
 
-    // Use the Navigator context which is always alive for this route
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -78,7 +77,6 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
         childName: alert.childName,
         actionLabel: 'Mark as Found',
         onVerified: (File photo) async {
-          // Show confirmation dialog after face verified
           if (!mounted) return;
           final confirm = await showDialog<bool>(
             context: context,
@@ -154,8 +152,7 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Error: $e'),
-              backgroundColor: AppTheme.danger),
+              content: Text('Error: $e'), backgroundColor: AppTheme.danger),
         );
       }
     }
@@ -186,8 +183,11 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
           backgroundColor: AppTheme.bg,
           floatingActionButtonLocation:
           FloatingActionButtonLocation.endContained,
+          // FIX: unique heroTag to avoid conflict with AlertsScreen FAB
+          // which lives simultaneously in HomeScreen's IndexedStack
           floatingActionButton: alert.status == 'active'
               ? FloatingActionButton.small(
+            heroTag: 'alert_detail_sighting_fab',
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(
@@ -292,7 +292,6 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
             body: TabBarView(
               controller: _tabController,
               children: [
-                // Pass _startMarkAsFoundFlow directly — uses State context
                 _DetailsTab(
                   alert: alert,
                   onMarkFound: _startMarkAsFoundFlow,
@@ -368,8 +367,7 @@ class _DetailsTab extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppTheme.success.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(16),
-                border:
-                Border.all(color: AppTheme.success.withOpacity(0.3)),
+                border: Border.all(color: AppTheme.success.withOpacity(0.3)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -415,8 +413,7 @@ class _DetailsTab extends StatelessWidget {
                     style: GoogleFonts.poppins(
                         fontSize: 16, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 16),
-                _infoRow(
-                    'Full Name', alert.childName, Icons.person_rounded),
+                _infoRow('Full Name', alert.childName, Icons.person_rounded),
                 _infoRow('Age', '${alert.childAge} years old',
                     Icons.cake_rounded),
                 _infoRow('Last Seen', alert.lastSeenLocation,
@@ -444,8 +441,7 @@ class _DetailsTab extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppTheme.success.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(16),
-                border:
-                Border.all(color: AppTheme.success.withOpacity(0.3)),
+                border: Border.all(color: AppTheme.success.withOpacity(0.3)),
               ),
               child: Row(children: [
                 const Icon(Icons.check_circle_rounded,
@@ -537,8 +533,7 @@ class _SightingsTab extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8)
+                      color: Colors.black.withOpacity(0.05), blurRadius: 8)
                 ],
               ),
               child: Column(
@@ -547,8 +542,7 @@ class _SightingsTab extends StatelessWidget {
                   Row(children: [
                     CircleAvatar(
                       radius: 18,
-                      backgroundColor:
-                      AppTheme.primary.withOpacity(0.1),
+                      backgroundColor: AppTheme.primary.withOpacity(0.1),
                       child: Text(
                         s.reporterName.isNotEmpty
                             ? s.reporterName[0].toUpperCase()
@@ -565,13 +559,11 @@ class _SightingsTab extends StatelessWidget {
                         children: [
                           Text(s.reporterName,
                               style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14)),
+                                  fontWeight: FontWeight.w600, fontSize: 14)),
                           Text(
                             '${s.reportedAt.day}/${s.reportedAt.month}/${s.reportedAt.year} ${s.reportedAt.hour}:${s.reportedAt.minute.toString().padLeft(2, '0')}',
                             style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                color: AppTheme.textLight),
+                                fontSize: 12, color: AppTheme.textLight),
                           ),
                         ],
                       ),
@@ -676,8 +668,7 @@ class _CommentsTab extends StatelessWidget {
                       children: [
                         CircleAvatar(
                           radius: 18,
-                          backgroundColor:
-                          AppTheme.primary.withOpacity(0.1),
+                          backgroundColor: AppTheme.primary.withOpacity(0.1),
                           child: Text(
                             c.authorName.isNotEmpty
                                 ? c.authorName[0].toUpperCase()

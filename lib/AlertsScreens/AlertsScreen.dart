@@ -92,8 +92,10 @@ class _AlertsScreenState extends State<AlertsScreen>
           ),
         ),
       ),
+      // FIX: heroTag set to null to avoid duplicate hero tag conflict
+      // when AlertsScreen is kept alive inside HomeScreen's IndexedStack
       floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'alerts_fab',
+        heroTag: null,
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const CreateAlertScreen()),
@@ -154,9 +156,7 @@ class _AlertList extends StatelessWidget {
             icon: filter == 'active'
                 ? Icons.check_circle_rounded
                 : Icons.search_off_rounded,
-            title: filter == 'active'
-                ? 'No Active Alerts'
-                : 'No Results',
+            title: filter == 'active' ? 'No Active Alerts' : 'No Results',
             subtitle: filter == 'active'
                 ? 'All children are safe right now'
                 : 'Try adjusting your search',

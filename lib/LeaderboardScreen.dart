@@ -97,7 +97,7 @@ class LeaderboardScreen extends StatelessWidget {
                           ],
                         ),
                         child: Row(children: [
-                          // Rank
+                          // Rank badge
                           Container(
                             width: 36,
                             height: 36,
@@ -139,44 +139,57 @@ class LeaderboardScreen extends StatelessWidget {
                                 : null,
                           ),
                           const SizedBox(width: 12),
+                          // Name + role + badge  — FIX: use Expanded + inner Flexible
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                // Name row
+                                Text(
+                                  user.name + (isCurrentUser ? ' (You)' : ''),
+                                  style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                                const SizedBox(height: 2),
+                                // Role + badge row
+                                // FIX: Flexible on the role Text so it shrinks
+                                // instead of pushing the badge chip off-screen
                                 Row(children: [
-                                  Text(
-                                    user.name +
-                                        (isCurrentUser ? ' (You)' : ''),
-                                    style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 14),
-                                  ),
-                                ]),
-                                Row(children: [
-                                  Text(user.roleLabel,
+                                  Flexible(
+                                    child: Text(
+                                      user.roleLabel,
                                       style: GoogleFonts.poppins(
                                           fontSize: 12,
-                                          color: AppTheme.textLight)),
-                                  const SizedBox(width: 8),
+                                          color: AppTheme.textLight),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 8, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color:
-                                      AppTheme.warning.withOpacity(0.1),
+                                      color: AppTheme.warning.withOpacity(0.1),
                                       borderRadius:
                                       BorderRadius.circular(10),
                                     ),
-                                    child: Text(user.badge,
-                                        style: GoogleFonts.poppins(
-                                            fontSize: 10,
-                                            color: AppTheme.warning,
-                                            fontWeight: FontWeight.w600)),
+                                    child: Text(
+                                      user.badge,
+                                      style: GoogleFonts.poppins(
+                                          fontSize: 10,
+                                          color: AppTheme.warning,
+                                          fontWeight: FontWeight.w600),
+                                    ),
                                   ),
                                 ]),
                               ],
                             ),
                           ),
+                          // Points
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
@@ -227,8 +240,8 @@ class LeaderboardScreen extends StatelessWidget {
                 fontSize: 11,
                 fontWeight: FontWeight.w600)),
         Text('${user.points} pts',
-            style: GoogleFonts.poppins(
-                color: Colors.white70, fontSize: 10)),
+            style:
+            GoogleFonts.poppins(color: Colors.white70, fontSize: 10)),
         const SizedBox(height: 6),
         Container(
           width: 70,
