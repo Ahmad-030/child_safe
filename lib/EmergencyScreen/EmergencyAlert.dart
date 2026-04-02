@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart'; // FIX: for tel & helpline
 import '../firebase_service.dart';
 import '../app_models.dart';
 
@@ -79,6 +80,73 @@ class _EmergencyScreenState extends State<EmergencyScreen>
     } finally {
       if (mounted) setState(() => _fetchingLocation = false);
     }
+  }
+
+  // FIX: show bottom sheet with GPS + manual options
+  void _showLocationPickerDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text('Set Last Seen Location',
+                  style: GoogleFonts.poppins(
+                      fontSize: 17, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 6),
+              Text(
+                'Choose how to set the location where the child was last seen',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                    fontSize: 13, color: const Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 20),
+              _buildImageSourceOption(
+                icon: Icons.my_location_rounded,
+                title: 'Use My Current Location',
+                subtitle: 'Auto-detect via GPS',
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _getLocation();
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildImageSourceOption(
+                icon: Icons.edit_location_alt_rounded,
+                title: 'Enter Location Manually',
+                subtitle: 'Type an address or landmark name',
+                onTap: () {
+                  Navigator.pop(context);
+                  // Clear existing GPS text so user can type freely
+                  _lastSeenController.clear();
+                  setState(() {
+                    _lat = null;
+                    _lng = null;
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _pickImage() async {
@@ -238,7 +306,6 @@ class _EmergencyScreenState extends State<EmergencyScreen>
     setState(() => _isSubmitting = true);
 
     try {
-      // Upload to Cloudinary — secure URL then stored in Firestore
       setState(() => _uploadingPhoto = true);
       final photoUrl =
       await FirebaseService.uploadImage(_selectedImage!, 'emergency');
@@ -310,7 +377,6 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF0F172A))),
-
             const SizedBox(height: 28),
             Container(
               width: double.infinity,
@@ -419,8 +485,7 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                           // Photo upload
                           Center(
                             child: GestureDetector(
-                              onTap:
-                              _uploadingPhoto ? null : _pickImage,
+                              onTap: _uploadingPhoto ? null : _pickImage,
                               child: Container(
                                 width: 160,
                                 height: 160,
@@ -446,7 +511,6 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                                           color: Color(0xFFEF4444),
                                           strokeWidth: 2),
                                       SizedBox(height: 10),
-
                                     ],
                                   ),
                                 )
@@ -486,21 +550,6 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                             ),
                           ),
 
-                          // Cloudinary badge
-                          const SizedBox(height: 8),
-                          Center(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.cloud_upload_rounded,
-                                    size: 13,
-                                    color: Color(0xFF64748B)),
-                                const SizedBox(width: 4),
-
-                              ],
-                            ),
-                          ),
-
                           const SizedBox(height: 28),
 
                           _buildLabel("Child's Full Name *"),
@@ -526,13 +575,15 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                             Expanded(
                               child: _buildTextField(
                                   controller: _lastSeenController,
-                                  hint: 'Enter location details',
+                                  hint: 'Enter location or use GPS button',
                                   icon: Icons.location_on_outlined),
                             ),
                             const SizedBox(width: 8),
+                            // FIX: tapping opens bottom sheet with GPS + manual options
                             GestureDetector(
-                              onTap:
-                              _fetchingLocation ? null : _getLocation,
+                              onTap: _fetchingLocation
+                                  ? null
+                                  : _showLocationPickerDialog,
                               child: Container(
                                 padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
@@ -547,11 +598,25 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                                     child: CircularProgressIndicator(
                                         strokeWidth: 2,
                                         color: Color(0xFFEF4444)))
-                                    : const Icon(Icons.my_location_rounded,
+                                    : const Icon(
+                                    Icons.add_location_alt_rounded,
                                     color: Color(0xFFEF4444)),
                               ),
                             ),
                           ]),
+                          const SizedBox(height: 4),
+                          // Hint text below location field
+                          Text(
+                            _lat != null
+                                ? '✓ GPS coordinates captured'
+                                : 'Tap 📍 to use GPS or type a location name',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              color: _lat != null
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFF94A3B8),
+                            ),
+                          ),
                           const SizedBox(height: 16),
 
                           _buildLabel('Reporter Contact Number *'),
@@ -570,9 +635,6 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                               hint: 'Clothing, physical features, etc.',
                               icon: Icons.description_outlined,
                               maxLines: 4),
-                          const SizedBox(height: 24),
-
-                          // Notice
                           const SizedBox(height: 32),
 
                           // Submit button
@@ -597,9 +659,8 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                             child: Material(
                               color: Colors.transparent,
                               child: InkWell(
-                                onTap: _isSubmitting
-                                    ? null
-                                    : _submitReport,
+                                onTap:
+                                _isSubmitting ? null : _submitReport,
                                 borderRadius: BorderRadius.circular(18),
                                 child: Row(
                                   mainAxisAlignment:
@@ -617,7 +678,12 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                                       const Icon(Icons.send_rounded,
                                           color: Colors.white, size: 24),
                                       const SizedBox(width: 12),
-
+                                      Text('Submit Emergency Report',
+                                          style: GoogleFonts.poppins(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight:
+                                              FontWeight.w700)),
                                     ],
                                   ],
                                 ),
@@ -627,16 +693,24 @@ class _EmergencyScreenState extends State<EmergencyScreen>
 
                           const SizedBox(height: 16),
 
+                          // FIX: helpline button is now clickable — launches tel:1122
                           Center(
                             child: TextButton.icon(
-                              onPressed: () {},
+                              onPressed: () async {
+                                final uri = Uri.parse('tel:1122');
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(uri);
+                                }
+                              },
                               icon: const Icon(Icons.phone_rounded,
                                   color: Color(0xFF2563EB), size: 20),
-                              label: Text('Call Emergency Helpline: 1122',
-                                  style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF2563EB))),
+                              label: Text(
+                                'Call Emergency Helpline: 1122',
+                                style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF2563EB)),
+                              ),
                             ),
                           ),
                           const SizedBox(height: 40),

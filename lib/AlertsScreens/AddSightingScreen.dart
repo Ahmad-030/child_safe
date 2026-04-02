@@ -26,6 +26,7 @@ class AddSightingScreen extends StatefulWidget {
 class _AddSightingScreenState extends State<AddSightingScreen> {
   final _locationCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
+  final _contactCtrl = TextEditingController(); // FIX: reporter contact
   File? _verifiedPhoto;
   bool _isLoading = false;
   bool _fetchingLocation = false;
@@ -37,6 +38,7 @@ class _AddSightingScreenState extends State<AddSightingScreen> {
   void dispose() {
     _locationCtrl.dispose();
     _descCtrl.dispose();
+    _contactCtrl.dispose(); // FIX
     super.dispose();
   }
 
@@ -86,9 +88,14 @@ class _AddSightingScreenState extends State<AddSightingScreen> {
   }
 
   Future<void> _submit() async {
-    if (_locationCtrl.text.isEmpty || _descCtrl.text.isEmpty) {
+    // FIX: validate contact too
+    if (_locationCtrl.text.isEmpty ||
+        _descCtrl.text.isEmpty ||
+        _contactCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all fields'), backgroundColor: AppTheme.danger),
+        const SnackBar(
+            content: Text('Please fill all required fields'),
+            backgroundColor: AppTheme.danger),
       );
       return;
     }
@@ -112,13 +119,16 @@ class _AddSightingScreenState extends State<AddSightingScreen> {
         lng: _lng,
         description: _descCtrl.text.trim(),
         photoUrl: photoUrl,
+        reporterContact: _contactCtrl.text.trim(), // FIX
         reportedAt: DateTime.now(),
       );
       await FirebaseService.addSighting(sighting);
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sighting reported! +10 points added.'), backgroundColor: AppTheme.success),
+          const SnackBar(
+              content: Text('Sighting reported! +10 points added.'),
+              backgroundColor: AppTheme.success),
         );
       }
     } catch (e) {
@@ -137,7 +147,9 @@ class _AddSightingScreenState extends State<AddSightingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.bg,
-      appBar: AppBar(title: const Text('Report Sighting'), backgroundColor: AppTheme.warning),
+      appBar: AppBar(
+          title: const Text('Report Sighting'),
+          backgroundColor: AppTheme.warning),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -157,7 +169,8 @@ class _AddSightingScreenState extends State<AddSightingScreen> {
                 Expanded(
                   child: Text(
                     'Reporting a sighting earns you +10 points and helps locate the child faster.',
-                    style: GoogleFonts.poppins(fontSize: 13, color: AppTheme.textDark),
+                    style: GoogleFonts.poppins(
+                        fontSize: 13, color: AppTheme.textDark),
                   ),
                 ),
               ]),
@@ -200,7 +213,9 @@ class _AddSightingScreenState extends State<AddSightingScreen> {
                         : Icon(
                       Icons.face_retouching_natural_rounded,
                       size: 32,
-                      color: _faceVerified ? AppTheme.success : AppTheme.primary,
+                      color: _faceVerified
+                          ? AppTheme.success
+                          : AppTheme.primary,
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -209,11 +224,15 @@ class _AddSightingScreenState extends State<AddSightingScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _faceVerified ? 'Face Verified ✅' : 'Add Photo & Verify Face',
+                          _faceVerified
+                              ? 'Face Verified ✅'
+                              : 'Add Photo & Verify Face',
                           style: GoogleFonts.poppins(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: _faceVerified ? AppTheme.success : AppTheme.textDark,
+                            color: _faceVerified
+                                ? AppTheme.success
+                                : AppTheme.textDark,
                           ),
                         ),
                         const SizedBox(height: 3),
@@ -223,27 +242,30 @@ class _AddSightingScreenState extends State<AddSightingScreen> {
                               : 'Take a photo — ML Kit will compare with original',
                           style: GoogleFonts.poppins(
                             fontSize: 12,
-                            color: _faceVerified ? AppTheme.success : AppTheme.textLight,
+                            color: _faceVerified
+                                ? AppTheme.success
+                                : AppTheme.textLight,
                           ),
                         ),
                       ],
                     ),
                   ),
                   Icon(
-                    _faceVerified ? Icons.check_circle_rounded : Icons.arrow_forward_ios_rounded,
+                    _faceVerified
+                        ? Icons.check_circle_rounded
+                        : Icons.arrow_forward_ios_rounded,
                     color: _faceVerified ? AppTheme.success : AppTheme.primary,
                     size: _faceVerified ? 24 : 16,
                   ),
                 ]),
               ),
             ),
-            const SizedBox(height: 6),
-
-
             const SizedBox(height: 24),
 
+            // Location field
             Text('Sighting Location *',
-                style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
+                style: GoogleFonts.poppins(
+                    fontSize: 14, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Row(children: [
               Expanded(
@@ -263,15 +285,34 @@ class _AddSightingScreenState extends State<AddSightingScreen> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: _fetchingLocation
-                      ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.my_location_rounded, color: AppTheme.primary),
+                      ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.my_location_rounded,
+                      color: AppTheme.primary),
                 ),
               ),
             ]),
             const SizedBox(height: 16),
 
+            // FIX: Reporter contact field
+            Text('Your Contact Number *',
+                style: GoogleFonts.poppins(
+                    fontSize: 14, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            AppTextField(
+              controller: _contactCtrl,
+              label: 'Phone number (so family can reach you)',
+              icon: Icons.phone_rounded,
+              keyboardType: TextInputType.phone,
+            ),
+            const SizedBox(height: 16),
+
+            // Description field
             Text('Description *',
-                style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
+                style: GoogleFonts.poppins(
+                    fontSize: 14, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             AppTextField(
               controller: _descCtrl,

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart'; // FIX: for tel & maps
 import '../../shared.dart';
 import '../../firebase_service.dart';
 import '../../app_models.dart';
@@ -22,13 +23,25 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
   late TabController _tabController;
   final _commentController = TextEditingController();
   bool _submittingComment = false;
-  // Store the latest alert so _startMarkAsFoundFlow always has fresh data
   MissingAlert? _latestAlert;
+
+  // FIX: track current user role for permission check
+  String? _currentUserRole;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _loadUserRole();
+  }
+
+  // FIX: load user role so we can restrict "Mark as Found"
+  Future<void> _loadUserRole() async {
+    final uid = FirebaseService.currentUid;
+    if (uid != null) {
+      final user = await FirebaseService.getUserProfile(uid);
+      if (mounted) setState(() => _currentUserRole = user?.role);
+    }
   }
 
   @override
@@ -61,7 +74,6 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
     }
   }
 
-  /// Uses the widget's own BuildContext (from build method) — always valid.
   void _startMarkAsFoundFlow() {
     final alert = _latestAlert;
     if (alert == null) return;
@@ -169,7 +181,6 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
       d.exists ? MissingAlert.fromMap(d.id, d.data()!) : null),
       builder: (context, snap) {
         final alert = snap.data;
-        // Keep _latestAlert updated so _startMarkAsFoundFlow always has data
         if (alert != null) _latestAlert = alert;
 
         if (alert == null) {
@@ -181,10 +192,10 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
 
         return Scaffold(
           backgroundColor: AppTheme.bg,
+          // FIX: ensure scaffold resizes for keyboard (fixes comment overflow)
+          resizeToAvoidBottomInset: true,
           floatingActionButtonLocation:
           FloatingActionButtonLocation.endContained,
-          // FIX: unique heroTag to avoid conflict with AlertsScreen FAB
-          // which lives simultaneously in HomeScreen's IndexedStack
           floatingActionButton: alert.status == 'active'
               ? FloatingActionButton.small(
             heroTag: 'alert_detail_sighting_fab',
@@ -292,9 +303,12 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
             body: TabBarView(
               controller: _tabController,
               children: [
+                // FIX: pass uid + role so _DetailsTab can gate "Mark as Found"
                 _DetailsTab(
                   alert: alert,
                   onMarkFound: _startMarkAsFoundFlow,
+                  currentUserUid: FirebaseService.currentUid,
+                  currentUserRole: _currentUserRole,
                 ),
                 _SightingsTab(alertId: alert.id),
                 _CommentsTab(
@@ -316,7 +330,16 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
 class _DetailsTab extends StatelessWidget {
   final MissingAlert alert;
   final VoidCallback onMarkFound;
-  const _DetailsTab({required this.alert, required this.onMarkFound});
+  // FIX: added for role-based access control
+  final String? currentUserUid;
+  final String? currentUserRole;
+
+  const _DetailsTab({
+    required this.alert,
+    required this.onMarkFound,
+    this.currentUserUid,
+    this.currentUserRole,
+  });
 
   Widget _infoRow(String label, String value, IconData icon) {
     return Padding(
@@ -355,12 +378,18 @@ class _DetailsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // FIX: only reporter or authority can mark as found
+    final canMarkFound = alert.status == 'active' &&
+        (currentUserUid == alert.reportedBy ||
+            currentUserRole == 'authority');
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (alert.status == 'active') ...[
+          // FIX: show Mark as Found only to reporter or authority
+          if (canMarkFound) ...[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -414,8 +443,8 @@ class _DetailsTab extends StatelessWidget {
                         fontSize: 16, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 16),
                 _infoRow('Full Name', alert.childName, Icons.person_rounded),
-                _infoRow('Age', '${alert.childAge} years old',
-                    Icons.cake_rounded),
+                _infoRow(
+                    'Age', '${alert.childAge} years old', Icons.cake_rounded),
                 _infoRow('Last Seen', alert.lastSeenLocation,
                     Icons.location_on_rounded),
                 _infoRow('Reported By', alert.reporterName,
@@ -473,7 +502,6 @@ class _DetailsTab extends StatelessWidget {
   }
 }
 
-// Simple button widget — no Hero, no external dependencies
 class _FoundButton extends StatelessWidget {
   final VoidCallback onTap;
   const _FoundButton({required this.onTap});
@@ -583,23 +611,83 @@ class _SightingsTab extends StatelessWidget {
                     ),
                   ]),
                   const SizedBox(height: 10),
-                  Row(children: [
-                    const Icon(Icons.location_on_rounded,
-                        size: 14, color: AppTheme.danger),
-                    const SizedBox(width: 4),
-                    Expanded(
-                        child: Text(s.location,
-                            style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.textDark))),
-                  ]),
+
+                  // FIX: location row is now tappable — opens Google Maps
+                  GestureDetector(
+                    onTap: () async {
+                      if (s.lat != null && s.lng != null) {
+                        final uri = Uri.parse(
+                            'https://maps.google.com/?q=${s.lat},${s.lng}');
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri,
+                              mode: LaunchMode.externalApplication);
+                        }
+                      }
+                    },
+                    child: Row(children: [
+                      Icon(
+                        Icons.location_on_rounded,
+                        size: 14,
+                        color: (s.lat != null && s.lng != null)
+                            ? AppTheme.primary
+                            : AppTheme.danger,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          s.location,
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: (s.lat != null && s.lng != null)
+                                ? AppTheme.primary
+                                : AppTheme.textDark,
+                            decoration: (s.lat != null && s.lng != null)
+                                ? TextDecoration.underline
+                                : null,
+                          ),
+                        ),
+                      ),
+                      if (s.lat != null && s.lng != null)
+                        const Icon(Icons.open_in_new_rounded,
+                            size: 14, color: AppTheme.primary),
+                    ]),
+                  ),
+
                   if (s.description.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Text(s.description,
                         style: GoogleFonts.poppins(
                             fontSize: 13, color: AppTheme.textMid)),
                   ],
+
+                  // FIX: show reporter contact as tappable phone link
+                  if (s.reporterContact.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    GestureDetector(
+                      onTap: () async {
+                        final uri = Uri.parse('tel:${s.reporterContact}');
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri);
+                        }
+                      },
+                      child: Row(children: [
+                        const Icon(Icons.phone_rounded,
+                            size: 13, color: AppTheme.primary),
+                        const SizedBox(width: 4),
+                        Text(
+                          s.reporterContact,
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: AppTheme.primary,
+                            fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ]),
+                    ),
+                  ],
+
                   if (s.photoUrl != null) ...[
                     const SizedBox(height: 10),
                     ClipRRect(
@@ -712,60 +800,66 @@ class _CommentsTab extends StatelessWidget {
             },
           ),
         ),
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2))
-            ],
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppTheme.bg,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                        color: AppTheme.primary.withOpacity(0.2)),
-                  ),
-                  child: TextField(
-                    controller: controller,
-                    decoration: InputDecoration(
-                      hintText: 'Add a comment...',
-                      hintStyle: GoogleFonts.poppins(
-                          color: AppTheme.textLight, fontSize: 14),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
+
+        // FIX: wrap input bar in keyboard-aware Padding to prevent overflow
+        Padding(
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, -2))
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppTheme.bg,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                          color: AppTheme.primary.withOpacity(0.2)),
+                    ),
+                    child: TextField(
+                      controller: controller,
+                      decoration: InputDecoration(
+                        hintText: 'Add a comment...',
+                        hintStyle: GoogleFonts.poppins(
+                            color: AppTheme.textLight, fontSize: 14),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: isSubmitting ? null : onSubmit,
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: const BoxDecoration(
-                    color: AppTheme.primary,
-                    shape: BoxShape.circle,
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: isSubmitting ? null : onSubmit,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: const BoxDecoration(
+                      color: AppTheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: isSubmitting
+                        ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2))
+                        : const Icon(Icons.send_rounded,
+                        color: Colors.white, size: 20),
                   ),
-                  child: isSubmitting
-                      ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2))
-                      : const Icon(Icons.send_rounded,
-                      color: Colors.white, size: 20),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],

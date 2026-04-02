@@ -11,6 +11,16 @@
         <!-- Camera & storage for image picker -->
         <uses-permission android:name="android.permission.CAMERA" />
         <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+            <data android:scheme="tel" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
 
 
     <application

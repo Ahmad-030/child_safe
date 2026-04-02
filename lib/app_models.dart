@@ -247,6 +247,7 @@ class Sighting {
   final double? lng;
   final String description;
   final String? photoUrl;
+  final String reporterContact; // FIX: added reporter contact
   final DateTime reportedAt;
 
   Sighting({
@@ -259,6 +260,7 @@ class Sighting {
     this.lng,
     required this.description,
     this.photoUrl,
+    this.reporterContact = '',
     required this.reportedAt,
   });
 
@@ -272,6 +274,7 @@ class Sighting {
     lng: (m['lng'] as num?)?.toDouble(),
     description: m['description'] ?? '',
     photoUrl: m['photoUrl'],
+    reporterContact: m['reporterContact'] ?? '',
     reportedAt:
     (m['reportedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
   );
@@ -285,6 +288,7 @@ class Sighting {
     'lng': lng,
     'description': description,
     'photoUrl': photoUrl,
+    'reporterContact': reporterContact,
     'reportedAt': FieldValue.serverTimestamp(),
   };
 }

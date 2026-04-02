@@ -87,7 +87,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: _user?.role == 'parent'
                       ? Icons.child_care_rounded
                       : Icons.search_rounded,
-                  label: _user?.role == 'parent' ? 'Children' : 'Search',
+                  label:
+                  _user?.role == 'parent' ? 'Children' : 'Search',
                   isActive: _currentIndex == 2,
                   onTap: () => setState(() => _currentIndex = 2),
                 ),
@@ -160,7 +161,8 @@ class _NavItem extends StatelessWidget {
               children: [
                 Icon(
                   icon,
-                  color: isActive ? AppTheme.primary : AppTheme.textLight,
+                  color:
+                  isActive ? AppTheme.primary : AppTheme.textLight,
                   size: 24,
                 ),
                 if (badge != null)
@@ -191,8 +193,7 @@ class _NavItem extends StatelessWidget {
                 fontSize: 10,
                 fontWeight:
                 isActive ? FontWeight.w700 : FontWeight.w500,
-                color:
-                isActive ? AppTheme.primary : AppTheme.textLight,
+                color: isActive ? AppTheme.primary : AppTheme.textLight,
               ),
             ),
           ],
@@ -261,8 +262,8 @@ class _HomeDashboard extends StatelessWidget {
                                     Text(
                                       'Welcome, ${user?.name.split(' ').first ?? 'User'}!',
                                       style: GoogleFonts.poppins(
-                                          color:
-                                          Colors.white.withOpacity(0.8),
+                                          color: Colors.white
+                                              .withOpacity(0.8),
                                           fontSize: 13),
                                     ),
                                   ],
@@ -339,12 +340,21 @@ class _HomeDashboard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 12),
+                            // FIX: "Children Found" card is now tappable
                             Expanded(
-                              child: StatCard(
-                                title: 'Children Found',
-                                value: '${stats['found']}',
-                                icon: Icons.check_circle_rounded,
-                                color: AppTheme.success,
+                              child: GestureDetector(
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const AlertsScreen(),
+                                  ),
+                                ),
+                                child: StatCard(
+                                  title: 'Children Found',
+                                  value: '${stats['found']}',
+                                  icon: Icons.check_circle_rounded,
+                                  color: AppTheme.success,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -409,7 +419,8 @@ class _HomeDashboard extends StatelessWidget {
                                 Text(
                                     'Report a missing child immediately',
                                     style: GoogleFonts.poppins(
-                                        color: Colors.white.withOpacity(0.85),
+                                        color:
+                                        Colors.white.withOpacity(0.85),
                                         fontSize: 12)),
                               ],
                             ),
@@ -422,7 +433,7 @@ class _HomeDashboard extends StatelessWidget {
 
                     const SizedBox(height: 20),
 
-                    // Recent alerts
+                    // Recent alerts header
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -431,8 +442,13 @@ class _HomeDashboard extends StatelessWidget {
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
                                 color: AppTheme.textDark)),
+                        // FIX: "See all" now navigates to AlertsScreen
                         TextButton(
-                          onPressed: () {},
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const AlertsScreen()),
+                          ),
                           child: Text('See all',
                               style: GoogleFonts.poppins(
                                   color: AppTheme.primary,
@@ -480,7 +496,8 @@ class _HomeDashboard extends StatelessWidget {
                                   color: AppTheme.success)),
                           Text('All children are safe right now',
                               style: GoogleFonts.poppins(
-                                  fontSize: 13, color: AppTheme.textMid)),
+                                  fontSize: 13,
+                                  color: AppTheme.textMid)),
                         ]),
                       ),
                     ),
@@ -501,7 +518,8 @@ class _HomeDashboard extends StatelessWidget {
                         ),
                       );
                     },
-                    childCount: alerts.length > 5 ? 5 : alerts.length,
+                    childCount:
+                    alerts.length > 5 ? 5 : alerts.length,
                   ),
                 );
               },
