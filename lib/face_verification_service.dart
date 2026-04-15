@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
 /// Replace with your actual Gemini API key (store securely, e.g. via --dart-define).
-const String _kGeminiApiKey = 'AIzaSyDXuR_nKhrg49OZHJXXo70vVD-CEN-JiC8';
+const String _kGeminiApiKey = ;
 
 /// Gemini model used for vision tasks.
 const String _kGeminiModel = 'gemini-flash-latest';
