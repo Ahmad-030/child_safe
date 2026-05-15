@@ -231,19 +231,39 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
                   background: Stack(
                     fit: StackFit.expand,
                     children: [
-                      alert.childPhotoUrl != null
-                          ? Image.network(alert.childPhotoUrl!,
+                      // ── Background photo ──
+                      (alert.childPhotoUrl != null && alert.childPhotoUrl!.isNotEmpty)
+                          ? Hero(
+                        tag: 'alert_photo_${alert.id}',
+                        child: Image.network(
+                          alert.childPhotoUrl!,
                           fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                          loadingBuilder: (_, child, progress) =>
+                          progress == null
+                              ? child
+                              : Container(
+                            color: AppTheme.primary.withOpacity(0.2),
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2),
+                            ),
+                          ),
                           errorBuilder: (_, __, ___) => Container(
                             color: AppTheme.primary.withOpacity(0.2),
                             child: const Icon(Icons.child_care,
                                 size: 100, color: AppTheme.primary),
-                          ))
+                          ),
+                        ),
+                      )
                           : Container(
                         color: AppTheme.primary.withOpacity(0.2),
                         child: const Icon(Icons.child_care,
                             size: 100, color: AppTheme.primary),
                       ),
+
+                      // ── Dark gradient overlay ──
                       Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
@@ -251,11 +271,13 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
                             end: Alignment.bottomCenter,
                             colors: [
                               Colors.transparent,
-                              Colors.black.withOpacity(0.7)
+                              Colors.black.withOpacity(0.7),
                             ],
                           ),
                         ),
                       ),
+
+                      // ── Child name / status text ──
                       Positioned(
                         bottom: 60,
                         left: 20,
@@ -283,6 +305,58 @@ class _AlertDetailScreenState extends State<AlertDetailScreen>
                           ],
                         ),
                       ),
+
+                      // ── Tap layer: sits on TOP of everything, only covers
+                      //    upper portion so text below is still readable ──
+                      if (alert.childPhotoUrl != null &&
+                          alert.childPhotoUrl!.isNotEmpty)
+                        Positioned(
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 110, // leaves the text area untouched
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => _FullScreenImagePage(
+                                    imageUrl: alert.childPhotoUrl!,
+                                    heroTag: 'alert_photo_${alert.id}',
+                                  ),
+                                ),
+                              );
+                            },
+                            behavior: HitTestBehavior.opaque,
+                            child: Align(
+                              alignment: Alignment.topRight,
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 56, right: 16),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.45),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.fullscreen_rounded,
+                                          color: Colors.white, size: 16),
+                                      SizedBox(width: 4),
+                                      Text('Tap to expand',
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -855,6 +929,53 @@ class _CommentsTab extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ─── FULL SCREEN IMAGE VIEWER ─────────────────────────────────────────────────
+class _FullScreenImagePage extends StatelessWidget {
+  final String imageUrl;
+  final String heroTag;
+
+  const _FullScreenImagePage({
+    required this.imageUrl,
+    required this.heroTag,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 0,
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          minScale: 0.5,
+          maxScale: 4.0,
+          child: Hero(
+            tag: heroTag,
+            child: Image.network(
+              imageUrl,
+              fit: BoxFit.contain,
+              loadingBuilder: (_, child, progress) =>
+              progress == null
+                  ? child
+                  : const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.broken_image_rounded,
+                color: Colors.white54,
+                size: 80,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -6,7 +6,13 @@ import '../shared.dart';
 import '../firebase_service.dart';
 import '../app_models.dart';
 import '../Authentication/LoginScreen.dart';
+import 'AboutChildSafeScreen.dart';
+import 'EditProfileScreen.dart';
+import 'HelpSupportScreen.dart';
 import 'LeaderboardScreen.dart';
+import 'NotificationSettingsScreen.dart';
+import 'PrivacySecurityScreen.dart';
+
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -192,6 +198,16 @@ class ProfileScreen extends StatelessWidget {
                       _menuSection(context, [
 
                         _menuItem(
+                            Icons.person_outline_rounded,
+                            'Edit Profile',
+                            AppTheme.primary,
+                                () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        EditProfileScreen(user: user)))),
+
+                        _menuItem(
                             Icons.leaderboard_rounded,
                             'Leaderboard',
                             AppTheme.warning,
@@ -200,6 +216,46 @@ class ProfileScreen extends StatelessWidget {
                                 MaterialPageRoute(
                                     builder: (_) =>
                                     const LeaderboardScreen()))),
+
+                        _menuItem(
+                            Icons.notifications_outlined,
+                            'Notification Settings',
+                            AppTheme.primary,
+                                () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                    const NotificationSettingsScreen()))),
+
+                        _menuItem(
+                            Icons.shield_outlined,
+                            'Privacy & Security',
+                            AppTheme.success,
+                                () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                    const PrivacySecurityScreen()))),
+
+                        _menuItem(
+                            Icons.help_outline_rounded,
+                            'Help & Support',
+                            AppTheme.textMid,
+                                () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                    const HelpSupportScreen()))),
+
+                        _menuItem(
+                            Icons.info_outline_rounded,
+                            'About ChildSafe',
+                            AppTheme.accent,
+                                () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                    const AboutChildSafeScreen()))),
 
                       ]),
 

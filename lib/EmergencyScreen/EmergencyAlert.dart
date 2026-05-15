@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:url_launcher/url_launcher.dart'; // FIX: for tel & helpline
 import '../firebase_service.dart';
 import '../app_models.dart';
@@ -62,11 +63,35 @@ class _EmergencyScreenState extends State<EmergencyScreen>
       }
       final pos = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
+
+      // Reverse-geocode to get a human-readable address
+      String locationLabel =
+          '${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}';
+      try {
+        final placemarks = await placemarkFromCoordinates(
+            pos.latitude, pos.longitude);
+        if (placemarks.isNotEmpty) {
+          final p = placemarks.first;
+          final parts = <String>[
+            if (p.name != null && p.name!.isNotEmpty && p.name != p.thoroughfare)
+              p.name!,
+            if (p.thoroughfare != null && p.thoroughfare!.isNotEmpty)
+              p.thoroughfare!,
+            if (p.subLocality != null && p.subLocality!.isNotEmpty)
+              p.subLocality!,
+            if (p.locality != null && p.locality!.isNotEmpty)
+              p.locality!,
+          ];
+          if (parts.isNotEmpty) locationLabel = parts.join(', ');
+        }
+      } catch (_) {
+        // Reverse geocode failed — fall back to coordinates
+      }
+
       setState(() {
         _lat = pos.latitude;
         _lng = pos.longitude;
-        _lastSeenController.text =
-        'GPS: ${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}';
+        _lastSeenController.text = locationLabel;
       });
     } catch (e) {
       if (mounted) {
@@ -617,6 +642,49 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                                   : const Color(0xFF94A3B8),
                             ),
                           ),
+                          // View on Map button — only shown when GPS coords exist
+                          if (_lat != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: GestureDetector(
+                                onTap: () async {
+                                  final uri = Uri.parse(
+                                      'https://www.google.com/maps?q=$_lat,$_lng');
+                                  if (await canLaunchUrl(uri)) {
+                                    await launchUrl(uri,
+                                        mode: LaunchMode.externalApplication);
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 7),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF10B981)
+                                        .withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                        color: const Color(0xFF10B981)
+                                            .withOpacity(0.4)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.map_outlined,
+                                          color: Color(0xFF10B981), size: 15),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'View on Map',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF10B981),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
                           const SizedBox(height: 16),
 
                           _buildLabel('Reporter Contact Number *'),

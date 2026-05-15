@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
 /// Replace with your actual Gemini API key (store securely, e.g. via --dart-define).
-const String _kGeminiApiKey = ;
+const String _kGeminiApiKey = "AIzaSyAmoJ1ke_bzDMxEaPZW7GsZKWzpjY_pA2c";
 
 /// Gemini model used for vision tasks.
 const String _kGeminiModel = 'gemini-flash-latest';
@@ -60,7 +60,16 @@ class FaceVerificationService {
     required String newB64,
   }) async {
     const prompt = '''
-Compare the two faces. Reply ONLY with this JSON (no markdown, no extra text):
+You are a strict biometric face comparison system. Your ONLY job is to determine whether the two images show the EXACT SAME INDIVIDUAL.
+
+STRICT RULES:
+- Carefully compare facial geometry: eye spacing, nose bridge shape, jawline, cheekbones, forehead width, lip shape, ear shape.
+- If the faces clearly belong to DIFFERENT people, you MUST return same_person: false, regardless of any superficial similarity such as similar hair, clothing, skin tone, age, or ethnicity.
+- A similarity_score above 0.75 must ONLY be given if you are highly confident both images show the same person.
+- Do NOT be lenient. When in doubt, return same_person: false with a low similarity_score.
+- Shared ethnicity or similar appearance does NOT mean same person.
+
+Reply ONLY with this JSON (no markdown, no extra text):
 {"same_person":true,"similarity_score":0.95,"confidence":"high","no_face_in_image1":false,"no_face_in_image2":false,"reasoning":"Faces match."}
 
 Fields:
@@ -69,7 +78,7 @@ Fields:
 - confidence: "high" or "medium" or "low"
 - no_face_in_image1: true/false
 - no_face_in_image2: true/false
-- reasoning: one short sentence, no special characters
+- reasoning: one short sentence describing key facial differences or matches, no special characters
 ''';
 
     final body = jsonEncode({
@@ -87,7 +96,7 @@ Fields:
         }
       ],
       'generationConfig': {
-        'temperature': 0.3,
+        'temperature': 0.0,
         'topP': 1,
         'topK': 1,
         'maxOutputTokens': 1000,

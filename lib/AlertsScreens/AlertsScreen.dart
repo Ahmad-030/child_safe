@@ -106,24 +106,24 @@ class _AlertsScreenState extends State<AlertsScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.18),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white.withOpacity(0.3)),
+                    border: Border.all(color: Colors.white.withOpacity(0.5)),
                   ),
                   child: TextField(
                     controller: _searchCtrl,
-                    onChanged: (v) => setState(() => _searchQuery = v.trim()),
-                    style: GoogleFonts.poppins(color: Colors.white, fontSize: 14),
+                    onChanged: (v) => setState(() => _searchQuery = v),
+                    style: GoogleFonts.poppins(color: AppTheme.textDark, fontSize: 14),
                     decoration: InputDecoration(
                       hintText: 'Search by name or location...',
                       hintStyle: GoogleFonts.poppins(
-                          color: Colors.white60, fontSize: 13),
-                      prefixIcon: const Icon(Icons.search_rounded,
-                          color: Colors.white70, size: 20),
+                          color: AppTheme.textLight, fontSize: 13),
+                      prefixIcon: Icon(Icons.search_rounded,
+                          color: AppTheme.primary, size: 20),
                       suffixIcon: _searchQuery.isNotEmpty
                           ? IconButton(
-                        icon: const Icon(Icons.close_rounded,
-                            color: Colors.white70, size: 18),
+                        icon: Icon(Icons.close_rounded,
+                            color: AppTheme.textLight, size: 18),
                         onPressed: _clearSearch,
                       )
                           : null,
@@ -246,7 +246,7 @@ class _AlertList extends StatelessWidget {
 
   List<MissingAlert> _filtered(List<MissingAlert> list) {
     if (searchQuery.isEmpty) return list;
-    final q = searchQuery.toLowerCase();
+    final q = searchQuery.trim().toLowerCase();
     return list
         .where((a) =>
     a.childName.toLowerCase().contains(q) ||
